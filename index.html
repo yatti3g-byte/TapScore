@@ -1264,7 +1264,7 @@ function resultModel(g,S){
   let ml=2;
   const teams=[0,1].map(t=>{
     const rows=[...S.bst[t].values()].sort((a,b)=>a.i-b.i||a.seq-b.seq);let last=-1;
-    const tot={};rows.forEach(r=>{Object.keys(r).forEach(k=>{if(typeof r[k]==='number'&&k!=='i'&&k!=='pos'&&k!=='seq')tot[k]=(tot[k]||0)+r[k];});ml=Math.max(ml,[...r.n].length);});
+    const tot={};rows.forEach(r=>{Object.keys(r).forEach(k=>{if(typeof r[k]==='number'&&k!=='i'&&k!=='pos'&&k!=='seq')tot[k]=(tot[k]||0)+r[k];});ml=Math.max(ml,[...shortName(r.n)].length);});
     const posStr=r=>{const a=S.ph[t][r.i+'|'+r.n];if(!a||!a.length)return POS[r.pos]||'';return a.map(v=>v>0?POS[v]:v<0?'走':'打').join('');};
     const firstField=r=>{const a=S.ph[t][r.i+'|'+r.n];return (a&&a.find(v=>v))||r.pos;};
     const out=rows.map(r=>{const o={order:r.i+1,sub:r.i===last,pos:posStr(r),cls:nmCls(firstField(r)),name:shortName(r.n),pas:r.pas,stat:statCells(r),hot:r.h>=3,raw:r};last=r.i;return o;});
