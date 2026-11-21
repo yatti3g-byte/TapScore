@@ -143,6 +143,7 @@ button{cursor:pointer}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;min-height:40px;font-weight:500}
 .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:700}
 .chip:disabled{opacity:.4}
+.chip.out{color:var(--hit)}.chip.out.on{background:#fde8e4;border-color:var(--hit);color:var(--hit);box-shadow:inset 0 0 0 1px var(--hit)}
 
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .seg button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px;font-weight:700;overflow-wrap:anywhere}
@@ -321,7 +322,8 @@ h2,.rv h2{font-weight:700;font-size:16px}
 /* selected = tinted with a green outline; solid green is kept for the main action button only */
 .tabs button[aria-selected="true"],.seg button[aria-pressed="true"],.chip.on{background:var(--accent2);color:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:700}
 .pad .bip{background:var(--accent);color:var(--accent-ink)}
-.pad .span3{grid-column:span 3}
+.pad .span3{grid-column:span 3}.pad .span2{grid-column:span 2}
+.seg button small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
 .pad .hbpb{min-height:54px;border-bottom:4px solid var(--lamp-o)}
 .qpad .qh{grid-column:1/-1;margin:2px 0 -4px;font-size:12px;color:var(--muted);font-weight:700}
 .qpad .qb{min-height:50px;padding:6px 2px;font-size:15px}
@@ -369,7 +371,7 @@ function endLabel(S){return S.ended?'試合終了'+(WHY[S.endWhy]?'（'+WHY[S.en
 const RES={
   '1B':{l:'単打',hit:1,ab:1,tb:1},'2B':{l:'二塁打',hit:1,ab:1,tb:2},'3B':{l:'三塁打',hit:1,ab:1,tb:3},'HR':{l:'本塁打',hit:1,ab:1,tb:4},
   GO:{l:'ゴロ',ab:1},FO:{l:'フライ',ab:1},LO:{l:'ライナー',ab:1},DP:{l:'併殺打',ab:1},
-  SAC:{l:'犠打',ab:0},SF:{l:'犠飛',ab:0},E:{l:'失策',ab:1},FC:{l:'野選',ab:1}
+  SAC:{l:'犠打',ab:0},SF:{l:'犠牲フライ',ab:0},E:{l:'失策',ab:1},FC:{l:'野選',ab:1}
 };
 const PL={'1B':'安','2B':'2','3B':'3',HR:'本',GO:'ゴ',FO:'飛',LO:'直',DP:'併',SAC:'犠',SF:'犠飛',E:'失',FC:'野選'};
 const NL={'1B':'安打','2B':'二塁打','3B':'三塁打',HR:'本塁打',GO:'ゴロ',FO:'飛球',LO:'直',DP:'併殺',SAC:'犠打',SF:'犠飛',E:'失策',FC:'野選'};
@@ -460,6 +462,11 @@ function replay(g){
     if(S.line[S.half][S.inn-1]==null)S.line[S.half][S.inn-1]=0;};
   const strikeout=text=>{const t=bt(),c=cur(),st=bs(t,c.i),pr=ps();st.pa++;st.ab++;st.k++;if(S.bases[2]||S.bases[3])st.rab++;pr.k++;pr.bf++;
     st.pas.push({inn:S.inn,type:'strikeout',lbl:'三振',rbi:0,run:false});entry({k:'pa',i:c.i,who:c.n,text,seq:S.seq.slice(),runs:0});addOut(1);endPA();checkHalf();};
+  // 振り逃げ：打者と投手に三振を付け、打者は一塁へ（押し出された走者だけ進む）
+  const dropped3=()=>{const t=bt(),c=cur(),st=bs(t,c.i),pr=ps();st.pa++;st.ab++;st.k++;if(S.bases[2]||S.bases[3])st.rab++;pr.k++;pr.bf++;
+    const pa={inn:S.inn,type:'strikeout',lbl:'振逃',rbi:0,run:false};st.pas.push(pa);
+    let carry={i:c.i,pr:pr.n,er:true,pa};const sc=[];for(let k=1;k<=3&&carry;k++){const o=S.bases[k];S.bases[k]=carry;carry=o;}
+    if(carry)sc.push(carry);score(sc);entry({k:'pa',i:c.i,who:c.n,text:'振り逃げ（一塁へ）',seq:S.seq.slice(),runs:sc.length});endPA();};
   const walk=label=>{const t=bt(),c=cur(),st=bs(t,c.i),pr=ps();st.pa++;if(label==='死球'){st.hbp++;pr.hbp++;}else{st.bb++;pr.bb++;}pr.bf++;
     const pa={inn:S.inn,type:label==='死球'?'hbp':'walk',lbl:label,rbi:0,run:false};st.pas.push(pa);
     let carry={i:c.i,pr:pr.n,er:true,pa};const sc=[];
@@ -479,6 +486,8 @@ function replay(g){
         break;}
       case 'pa':
         // 打席の結果だけを入れる簡易入力（投球数は数えない）
+        if(e.pk){pitch(ps());S.seq.push(e.pk);}
+        if(e.k==='KD'){dropped3();break;}
         if(e.k==='BB')walk('四球');else if(e.k==='HBP')walk('死球');else strikeout(e.k==='KL'?'見逃し三振':e.k==='KS'?'空振り三振':'三振');
         break;
       case 'hbp':pitch(ps());S.seq.push('D');walk('死球');break;
@@ -1104,7 +1113,7 @@ function viewHome(){
       '<label class="btn wide filebtn" for="imp">試合のファイルを開く<small>TapScoreやスコアブック読み取りで保存したHTML</small></label><input id="imp" type="file" accept=".html,.htm,text/html" hidden>'+
       (ui.local?'<div class="row"><button class="btn filebtn" data-act="backup">バックアップを保存<small>全試合と名簿</small></button><label class="btn filebtn" for="bkin">バックアップを戻す<small>保存したファイルを選ぶ</small></label><input id="bkin" type="file" accept=".json,application/json" hidden></div>':'')+
       '<button class="link" data-act="sample">動作確認用のサンプル試合を入れる</button>';}
-  h+=ui.local?'<p class="foot">TapScore 0.20　記録はこの端末のブラウザに保存されます。ブラウザのデータを消すと記録も消えるので、試合のあとは「バックアップを書き出す」で控えを残してください。記録係を交代するときは、試合画面の「その他」→「記録係を交代する」でリンクを送ってください。</p>':'<p class="foot">記録係を交代しても、同じ試合を開けば続きから入力できます。見るだけの人にも速報が届きます。</p>';
+  h+=ui.local?'<p class="foot">TapScore 0.21　記録はこの端末のブラウザに保存されます。ブラウザのデータを消すと記録も消えるので、試合のあとは「バックアップを書き出す」で控えを残してください。記録係を交代するときは、試合画面の「その他」→「記録係を交代する」でリンクを送ってください。</p>':'<p class="foot">記録係を交代しても、同じ試合を開けば続きから入力できます。見るだけの人にも速報が届きます。</p>';
   return h;
 }
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
@@ -1179,23 +1188,25 @@ function scoreTab(g,S){
       return '<button class="btn qb '+(cls||'')+(span?' span2':'')+'" data-act="qres" data-res="'+code+'"'+(dis?' disabled':'')+'>'+label+'</button>';};
     h+='<div class="lastrow"><p class="last" role="status">'+esc(lastText(g,S))+'</p>'+fixBtn(g)+'<button class="savest" data-act="save-retry"></button></div><div class="pad qpad">'+
       '<button class="btn sm" data-act="undo"'+(n?'':' disabled')+'>↩ 取り消し</button><button class="btn sm" data-act="runner"'+(hasRun?'':' disabled')+'>盗塁・進塁</button>'+
-      '<button class="btn sm" data-act="pc">投手交代</button><button class="btn sm" data-act="more">その他</button>'+
+      '<button class="btn sm" data-act="subs">選手交代</button><button class="btn sm" data-act="more">その他</button>'+
       '<p class="qh">安打</p>'+rb('1B','単打','hitb')+rb('2B','二塁打','hitb')+rb('3B','三塁打','hitb')+rb('HR','本塁打','hitb')+
       '<p class="qh">出塁</p>'+rb('BB','四球','onb')+rb('HBP','死球','onb')+rb('E','失策','onb')+rb('FC','野選','onb')+
       '<p class="qh">アウト</p>'+rb('SAC','犠打')+rb('SF','犠飛')+rb('DP','併殺打')+rb('LO','ライナー')+
-      rb('GO','ゴロ')+rb('FO','フライ')+rb('K','三振','',true)+'</div></div>';
+      rb('GO','ゴロ')+rb('FO','フライ')+rb('K','三振')+'<button class="btn qb" data-act="kd"'+(kdOk(S)?'':' disabled')+'>振り逃げ</button></div></div>';
     return h;
   }
   h+='<div class="lastrow"><p class="last" role="status">'+esc(lastText(g,S))+'</p>'+fixBtn(g)+'<button class="savest" data-act="save-retry"></button></div><div class="pad">'+
     '<button class="btn sm" data-act="undo"'+(n?'':' disabled')+'>↩ 取り消し</button><button class="btn sm" data-act="runner"'+(hasRun?'':' disabled')+'>盗塁・進塁</button>'+
-    '<button class="btn sm" data-act="pc">投手交代</button><button class="btn sm" data-act="more">その他</button>'+
-    '<button class="btn hbpb" data-act="hbp">死球</button><button class="btn bip span3" data-act="bip">打った（インプレー）</button>'+
+    '<button class="btn sm" data-act="subs">選手交代</button><button class="btn sm" data-act="more">その他</button>'+
+    '<button class="btn hbpb" data-act="hbp">死球</button>'+(S.s===2?'<button class="btn hbpb" data-act="kd"'+(kdOk(S)?'':' disabled')+'>振り逃げ</button><button class="btn bip span2" data-act="bip">打った</button>':'<button class="btn bip span3" data-act="bip">打った（インプレー）</button>')+
     '<button class="btn pb k-b" data-act="pitch" data-k="B"><b>ボール</b></button>'+
     '<button class="btn pb k-s" data-act="pitch" data-k="C"><small>見逃し</small><b>ストライク</b></button>'+
     '<button class="btn pb k-s" data-act="pitch" data-k="S"><small>空振り</small><b>ストライク</b></button>'+
     '<button class="btn pb k-s" data-act="pitch" data-k="F"><b>ファウル</b></button></div></div>';
   return h;
 }
+// 振り逃げができるのは、一塁が空いているか2アウトのとき
+function kdOk(S){return !S.bases[1]||S.outs===2;}
 function quickMode(g){return !!g&&g.mode==='pa';}
 const SEQ={B:['b','ボール'],C:['s','見逃し'],S:['s','空振り'],F:['s','ファウル'],X:['x','打'],D:['d','死球']};
 function seqHTML(q){if(q.length===1&&q[0]==='X')return '<i class="pt x">初球打ち</i>';return q.map(c=>SEQ[c]?'<i class="pt '+SEQ[c][0]+'">'+SEQ[c][1]+'</i>':'').join('');}
@@ -1219,7 +1230,7 @@ function logTab(g,S){
   return h+'</ul>';
 }
 function seg(act,sel,S){
-  const g=games[ui.gid];return '<div class="seg">'+[0,1].map(t=>'<button data-act="'+act+'" data-t="'+t+'" aria-pressed="'+(sel===t)+'">'+sideName(g,t)+'　'+esc(S.teams[t])+'</button>').join('')+'</div>';
+  const g=games[ui.gid];return '<div class="seg">'+[0,1].map(t=>'<button data-act="'+act+'" data-t="'+t+'" aria-pressed="'+(sel===t)+'">'+esc(S.teams[t])+'<small>'+sideName(g,t)+'</small></button>').join('')+'</div>';
 }
 /* ---------- result view (same look as the scorebook-reader app) ---------- */
 const fr=v=>isFinite(v)?(v<1?v.toFixed(3).replace(/^0/,''):v.toFixed(3)):'-';
@@ -1420,16 +1431,23 @@ async function buildImage(){
 }
 function draft(g,S){
   const t=ui.luTeam;
-  if(!ui.luDraft||ui.luDraft.t!==t||ui.luDraft.gid!==ui.gid)ui.luDraft={t,gid:ui.gid,name:S.teams[t],base:S.lu[t].length,sp:S.lu[t].some(p=>p.p===1)?'':(S.pit[t]==='先発投手'?'':S.pit[t]),rows:S.lu[t].map(p=>({n:p.n,p:p.p,no:p.no||''}))};
+  const fix=!!ui.luFix&&(g.ev||[]).length>0;
+  if(!ui.luDraft||ui.luDraft.t!==t||ui.luDraft.gid!==ui.gid||ui.luDraft.fix!==fix){
+    const src=fix?((g.lu&&g.lu[t]&&g.lu[t].length)?g.lu[t]:defaultLineup()):S.lu[t];
+    const sp=fix?String((g.sp&&g.sp[t])||''):(S.lu[t].some(p=>p.p===1)?'':(S.pit[t]==='先発投手'?'':S.pit[t]));
+    ui.luDraft={t,gid:ui.gid,fix,name:S.teams[t],base:src.length,sp,rows:src.map(p=>({n:String(p.n||''),p:p.p|0,no:String(p.no||'')}))};}
   return ui.luDraft;
 }
 function lineupTab(g,S){
-  const t=ui.luTeam;let h=seg('lu-team',t,S);
+  const t=ui.luTeam,live=(g.ev||[]).length>0&&!S.ended;
+  let h='<div class="seg">'+[0,1].map(x=>'<button data-act="lu-team" data-t="'+x+'" aria-pressed="'+(t===x)+'">'+esc(S.teams[x])+(live?'<small>'+(x===S.half?'攻撃中':'守備中')+'</small>':'<small>'+sideName(g,x)+'</small>')+'</button>').join('')+'</div>';
+  if(ui.canWrite&&(g.ev||[]).length)h+='<div class="seg">'+[[false,'選手交代'],[true,'スタメンを直す']].map(x=>'<button data-act="lu-fix" data-v="'+(x[0]?1:0)+'" aria-pressed="'+(!!ui.luFix===x[0])+'">'+x[1]+'</button>').join('')+'</div>'+
+    '<p class="hint">'+(ui.luFix?'試合開始時の打順を直します。交代ではなく、最初から入力を間違えていたときに使います。名前を直すと、それまでの記録や成績の名前も直ります。':'代打・代走・守備位置・投手の交代を、まとめて入れて保存できます。守備位置を選ぶと、その位置にいた選手と入れかわります（投手と野手の入れかえも1回で済みます）。')+'</p>';
   if(!ui.canWrite){
     h+='<ol class="lu">'+S.lu[t].map((p,i)=>'<li><span class="ord">'+(i+1)+'</span><span class="ro">'+esc(p.no||'')+'</span><span class="ro">'+esc(pname(p,i))+'</span><span class="ro">'+(POS[p.p]||'—')+'</span></li>').join('')+'</ol>';
     return h;
   }
-  const d=draft(g,S);const started=(g.ev||[]).length>0,rt=(g.rt||[])[t]||'';
+  const d=draft(g,S);const started=(g.ev||[]).length>0&&!d.fix,rt=(g.rt||[])[t]||'';
   if(teamCount())h+='<h4 class="lh">名簿</h4><div class="chips">'+[''].concat(allTeams().map(x=>x.t.id)).map(id=>'<button class="chip'+(rt===id?' on':'')+'" data-act="lu-rt" data-v="'+esc(id)+'">'+(id?esc(teamLabel(id)):'使わない')+'</button>').join('')+'</div>';
   h+=rosterList('dl-lu',rt)+'<div class="luhead"><span></span><span>背番号</span><span>名前</span><span>守備</span></div><ol class="lu">';
   d.rows.forEach((r,i)=>{
@@ -1442,10 +1460,10 @@ function lineupTab(g,S){
   {const tr=rTeam(rt),used=new Set(d.rows.map(r=>String(r.n||'').trim()));
    const left=tr?tr.players.filter(p=>p.name&&!used.has(p.name)):[];
    if(left.length)h+='<h4 class="lh">名簿から打順に入れる（押した順に'+(d.rows.findIndex(r=>!String(r.n||'').trim())+1||d.rows.length+1)+'番から入ります）</h4><div class="chips">'+left.map(p=>'<button class="chip" data-act="lu-pick" data-v="'+esc(p.name)+'">'+(digits(p.number)?'<b>'+digits(p.number)+'</b> ':'')+esc(p.name)+'</button>').join('')+'</div>';}
-  const dh=!d.rows.some(r=>r.p===1),canDel=started?d.rows.length>d.base:d.rows.length>1;
-  if(dh)h+='<label class="fld" for="lu-sp"><span>投手（打順に入らない・DHのとき）</span><input id="lu-sp" data-lu="sp" list="dl-lu" maxlength="20" placeholder="投手の名前" value="'+esc(d.sp)+'"></label>';
-  h+='<div class="row"><button class="btn" data-act="lu-add"'+(d.rows.length>=25?' disabled':'')+'>打者を追加（'+(d.rows.length+1)+'番）</button><button class="btn" data-act="lu-del"'+(canDel?'':' disabled')+'>最後の打者を消す</button></div>';
-  h+='<button class="btn primary wide" data-act="lu-save">打順を保存</button><p class="hint">'+(started?'試合中の変更は、選手交代として「経過」に残ります。追加した打者は打順の最後に入り、打順が回ってきたときから打ちます。':(g.tbd?'先攻・後攻が決まったら「記録」タブで選んでください。入れた打順はそのまま引き継がれます。':'')+'10人目以降も追加できます（全員打順のときなど）。DHを使うときは、打者の守備位置を「指（DH）」にして、投手を打順の外に入れてください。')+'</p>'+
+  const dh=!d.rows.some(r=>r.p===1),canDel=d.fix?false:started?d.rows.length>d.base:d.rows.length>1;
+  if(dh)h+='<label class="fld" for="lu-sp"><span>'+(d.fix?'先発投手（打順に入らない・DHのとき）':'投手（打順に入らない・DHのとき）')+'</span><input id="lu-sp" data-lu="sp" list="dl-lu" maxlength="20" placeholder="投手の名前" value="'+esc(d.sp)+'"></label>';
+  if(!d.fix)h+='<div class="row"><button class="btn" data-act="lu-add"'+(d.rows.length>=25?' disabled':'')+'>打者を追加（'+(d.rows.length+1)+'番）</button><button class="btn" data-act="lu-del"'+(canDel?'':' disabled')+'>最後の打者を消す</button></div>';
+  h+='<div class="row">'+(ui.luFrom==='score'?'<button class="btn" data-act="lu-back">やめる</button>':'')+'<button class="btn primary" data-act="lu-save">'+(d.fix?'スタメンを保存':started?'交代を記録':'打順を保存')+'</button></div><p class="hint">'+(d.fix?'途中から出た選手の名前は、「経過」でその交代の記録を押して直せます。':started?'試合中の変更は、選手交代として「経過」に残ります。追加した打者は打順の最後に入り、打順が回ってきたときから打ちます。':(g.tbd?'先攻・後攻が決まったら「記録」タブで選んでください。入れた打順はそのまま引き継がれます。':'')+'10人目以降も追加できます（全員打順のときなど）。DHを使うときは、打者の守備位置を「指（DH）」にして、投手を打順の外に入れてください。')+'</p>'+
     '';
   return h;
 }
@@ -1487,6 +1505,13 @@ function resBtn(code,S,cls){
   return '<button class="btn '+(cls||'')+'" data-act="res" data-res="'+code+'"'+(dis?' disabled':'')+'>'+RES[code].l+'</button>';
 }
 const DL=['アウト','1塁','2塁','3塁','生還'];
+function destBlock(o,B,lu,half,cur){
+  const chips=(who,opts,val,stay)=>'<div class="chips">'+opts.map(v=>'<button class="chip'+(v===0?' out':'')+(val===v?' on':'')+'" data-act="dest" data-who="'+who+'" data-v="'+v+'">'+(v===stay?'そのまま':DL[v])+'</button>').join('')+'</div>';
+  let h='<h4>打者　'+(cur.i+1)+'番 '+esc(cur.n)+'</h4>'+chips('b',[1,2,3,4,0],o.b,-1);
+  [1,2,3].forEach(k=>{const rn=B[k];if(!rn)return;const opts=[k];for(let v=k+1;v<=4;v++)opts.push(v);opts.push(0);
+    h+='<h4>'+k+'塁走者　'+(rn.i+1)+'番 '+esc(pname(lu[half][rn.i],rn.i))+'</h4>'+chips(k,opts,o.r[k],k);});
+  return h;
+}
 function renderSheet(){
   const s=$('#sheet'),S=ui.S;let h='<div class="panel" role="dialog" aria-modal="true">';
   if(ui.sheet==='res'){
@@ -1495,11 +1520,8 @@ function renderSheet(){
       '<h4>その他の出塁</h4><div class="grid3">'+['E','FC'].map(c=>resBtn(c,S)).join('')+'</div><button class="btn" data-act="sheet-close">やめる</button>';
   }else if(ui.sheet==='adv'){
     const p=ui.pend,bt=S.half;
-    h+='<h3>'+RES[p.res].l+'：走者を確認</h3><h4>打者　'+(S.cur.i+1)+'番 '+esc(S.cur.n)+'</h4><div class="chips">'+
-      [0,1,2,3,4].map(v=>'<button class="chip'+(p.b===v?' on':'')+'" data-act="dest" data-who="b" data-v="'+v+'">'+DL[v]+'</button>').join('')+'</div>';
-    [3,2,1].forEach(k=>{const rn=S.bases[k];if(!rn)return;
-      h+='<h4>'+k+'塁走者　'+(rn.i+1)+'番 '+esc(pname(S.lu[bt][rn.i],rn.i))+'</h4><div class="chips">'+
-        [0,1,2,3,4].filter(v=>v===0||v>=k).map(v=>'<button class="chip'+(p.r[k]===v?' on':'')+'" data-act="dest" data-who="'+k+'" data-v="'+v+'">'+(v===k?'そのまま':DL[v])+'</button>').join('')+'</div>';});
+    const tag=(p.res==='FO'||p.res==='LO')&&S.bases[3]&&S.outs<2;
+    h+='<h3>'+RES[p.res].l+'：走者を確認</h3>'+(tag?'<p class="sum">三塁走者がタッチアップで還ったら「生還」を選んでください。犠牲フライとして記録します。</p>':'')+destBlock(p,S.bases,S.lu,bt,S.cur);
     const ds=[p.b].concat(Object.keys(p.r).map(k=>p.r[k]));const bad=destConflict(p.b,p.r);
     h+='<p class="sum">この打席で　アウト '+ds.filter(v=>v===0).length+'　得点 '+ds.filter(v=>v>=4).length+'</p>';
     if(bad)h+='<p class="warn">同じ塁に2人います。行き先を直してください。</p>';
@@ -1546,7 +1568,7 @@ function renderSheet(){
     const mid=S.outs>0||S.b+S.s>0;
     h+='<h3>試合を終了する</h3><p class="sum">いまは '+S.inn+'回'+(S.half?'裏':'表')+(S.outs?'、'+S.outs+'アウト':'')+'。スコアは '+esc(S.teams[0])+' '+S.R[0]+' − '+S.R[1]+' '+esc(S.teams[1])+' です。</p><h4>終了の理由</h4><div class="chips">'+
       ['reg','time','cold','rain','other'].map(k=>'<button class="chip'+(ui.endWhy===k?' on':'')+'" data-act="end-why" data-v="'+k+'">'+(WHY[k]||'規定の回まで')+'</button>').join('')+'</div>'+
-      '<p class="sum">理由は試合一覧・成績・保存した画像やHTMLに表示されます。まだ攻撃していない回のスコアは空欄のままになります。'+(mid?'回の途中の得点もそのまま数えます。大会の規定で数えない場合は、「経過」からその回の記録を削除してください。':'')+'終了後も「試合終了を取り消す」で再開できます。</p>'+
+      '<p class="sum">まだ攻撃していない回は空欄になります。'+(mid?'この回の途中の得点も数えます。':'')+'あとで取り消して再開できます。</p>'+
       '<div class="row"><button class="btn" data-act="sheet-close">やめる</button><button class="btn primary" data-act="end-ok">試合を終了する</button></div>';
   }else if(ui.sheet==='gset'){
     const d=ui.gs;
@@ -1562,7 +1584,7 @@ function renderSheet(){
       '<div class="row"><button class="btn" data-act="sheet-close">やめる</button><button class="btn primary" data-act="gs-ok">保存</button></div>';
   }else if(ui.sheet==='more'){
     const tbOk=!S.ended&&!S.outs&&!S.act&&![1,2,3].some(k=>S.bases[k]);
-    h+='<h3>その他</h3><button class="btn" data-act="more-lineup">代打・代走・守備の交代</button>'+
+    h+='<h3>その他</h3>'+
       (ui.redo.length?'<button class="btn" data-act="more-redo">取り消した記録を元に戻す</button>':'')+
       (tbOk?'<div class="row"><button class="btn" data-act="tb" data-v="2">タイブレーク（無死一・二塁）</button><button class="btn" data-act="tb" data-v="3">タイブレーク（無死満塁）</button></div>':'')+
       '<button class="btn" data-act="mode-flip">'+(quickMode(games[ui.gid])?'1球ごとの入力にする':'打席の結果だけの入力にする')+'</button>'+
@@ -1586,10 +1608,7 @@ function renderSheet(){
       h+='<p class="sum">'+P.inn+'回'+(bt?'裏':'表')+'　'+(P.cur.i+1)+'番 '+esc(P.cur.n)+'</p><h4>結果</h4><div class="chips">'+
         Object.keys(RES).map(c=>'<button class="chip'+(e.res===c?' on':'')+'" data-act="ed-res" data-v="'+c+'">'+RES[c].l+'</button>').join('')+'</div>'+
         '<h4>捕った野手</h4><div class="chips">'+[0,1,2,3,4,5,6,7,8,9].map(f=>'<button class="chip'+((e.f|0)===f?' on':'')+'" data-act="ed-f" data-v="'+f+'">'+(f?POS[f]:'なし')+'</button>').join('')+'</div>'+
-        '<h4>打者の行き先</h4><div class="chips">'+[0,1,2,3,4].map(v=>'<button class="chip'+(e.b===v?' on':'')+'" data-act="dest" data-who="b" data-v="'+v+'">'+DL[v]+'</button>').join('')+'</div>';
-      [3,2,1].forEach(k=>{const rn=P.bases[k];if(!rn)return;
-        h+='<h4>'+k+'塁走者　'+(rn.i+1)+'番 '+esc(pname(P.lu[bt][rn.i],rn.i))+'</h4><div class="chips">'+
-          [0,1,2,3,4].filter(v=>v===0||v>=k).map(v=>'<button class="chip'+(e.r[k]===v?' on':'')+'" data-act="dest" data-who="'+k+'" data-v="'+v+'">'+(v===k?'そのまま':DL[v])+'</button>').join('')+'</div>';});
+        destBlock(e,P.bases,P.lu,bt,P.cur);
       h+='<h4>打点</h4><div class="chips">'+[-1,0,1,2,3,4].map(v=>'<button class="chip'+((e.rbi==null?-1:e.rbi)===v?' on':'')+'" data-act="ed-rbi" data-v="'+v+'">'+(v<0?'自動':v)+'</button>').join('')+'</div>';
       if(destConflict(e.b,e.r))h+='<p class="warn">同じ塁に2人います。行き先を直してください。</p>';
     }else if(e.t==='run'){
@@ -1599,15 +1618,22 @@ function renderSheet(){
         '<h4>理由</h4><div class="chips">'+(e.to===0?['CS','PO']:['SB','WP','PB','BK','ADV']).map(k=>'<button class="chip'+(e.k===k?' on':'')+'" data-act="ed-k" data-v="'+k+'">'+(k==='ADV'?'その他の進塁':RUNK[k])+'</button>').join('')+'</div>';
     }else if(e.t==='pa'){
       h+='<p class="sum">'+P.inn+'回'+(bt?'裏':'表')+'　'+(P.cur.i+1)+'番 '+esc(P.cur.n)+'</p><div class="chips">'+
-        [['BB','四球'],['HBP','死球'],['K','三振']].map(x=>'<button class="chip'+(e.k===x[0]||(x[0]==='K'&&/^K/.test(e.k))?' on':'')+'" data-act="ed-pa" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'+
+        [['BB','四球'],['HBP','死球'],['K','三振'],['KD','振り逃げ']].map(x=>'<button class="chip'+(e.k===x[0]||(x[0]==='K'&&/^K[LS]?$/.test(e.k))?' on':'')+'" data-act="ed-pa" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'+
         '<p class="sum">打球の結果に直すときは、この記録を削除して入れ直してください。</p>';
     }else if(e.t==='p'||e.t==='hbp'){
       const curK=e.t==='hbp'?'D':e.k;
       h+='<p class="sum">'+P.inn+'回'+(bt?'裏':'表')+'　'+(P.cur.i+1)+'番 '+esc(P.cur.n)+'　この打席の最後の1球</p><div class="chips">'+
-        [['B','ボール'],['C','見逃し'],['S','空振り'],['F','ファウル'],['D','死球']].map(x=>'<button class="chip'+(curK===x[0]?' on':'')+'" data-act="ed-pk" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';
-    }else h+='<p class="sum">この交代の記録は、削除だけできます。入れ直すときは削除してから交代をやり直してください。</p>';
+        [['B','ボール'],['C','見逃し'],['S','空振り'],['F','ファウル'],['D','死球'],['KD','振り逃げ']].map(x=>'<button class="chip'+(curK===x[0]?' on':'')+'" data-act="ed-pk" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';
+    }else if(e.t==='sub'||e.t==='add'){
+      h+='<p class="sum">'+esc(P.teams[e.tm])+'　'+(e.t==='add'?'打順に加わった選手':(e.i+1)+'番に入った選手')+'</p>'+
+        '<label class="fld" for="ed-n"><span>名前</span><input id="ed-n" maxlength="20" value="'+esc(e.n||'')+'"></label>'+
+        '<label class="fld" for="ed-no"><span>背番号</span><input id="ed-no" inputmode="numeric" maxlength="3" value="'+esc(e.no||'')+'"></label>'+
+        '<label class="fld" for="ed-p"><span>守備位置</span><select id="ed-p"><option value="0">守備なし</option>'+[1,2,3,4,5,6,7,8,9,10].map(v=>'<option value="'+v+'"'+((e.p|0)===v?' selected':'')+'>'+(v===10?'指（DH）':POS[v])+'</option>').join('')+'</select></label>';
+    }else if(e.t==='pc'&&e.i==null){
+      h+='<p class="sum">'+esc(P.teams[e.tm])+'　新しく入った投手</p><label class="fld" for="ed-n"><span>名前</span><input id="ed-n" maxlength="20" value="'+esc(e.n||'')+'"></label>';
+    }else h+='<p class="sum">この記録は、削除だけできます。</p>';
     h+='<p class="sum">訂正すると、これより後の走者・アウト・得点・成績を自動で計算し直します。保存後に「経過」を確認してください。</p><div class="row">'+
-      '<button class="btn" data-act="sheet-close">やめる</button>'+((e.t==='sub'||e.t==='pc'||e.t==='add'||e.t==='tb'||e.t==='bat'||e.t==='cut')?'':'<button class="btn primary" data-act="ed-save"'+(e.t==='bip'&&destConflict(e.b,e.r)?' disabled':'')+'>訂正を保存</button>')+
+      '<button class="btn" data-act="sheet-close">やめる</button>'+((e.t==='pc'&&e.i!=null)||e.t==='tb'||e.t==='bat'||e.t==='cut'?'':'<button class="btn primary" data-act="ed-save"'+(e.t==='bip'&&destConflict(e.b,e.r)?' disabled':'')+'>訂正を保存</button>')+
       '</div><button class="link danger" data-act="ed-del">この記録を削除</button>';
   }else if(ui.sheet==='share'){
     h+='<h3>記録係を交代する・途中経過を送る</h3><p class="sum">このリンクを開いた人のスマホに、いまの記録がそのまま入ります。次の記録係に送れば続きから入力でき、途中経過を見せたい人にも送れます。送ったあとの入力は自動では届かないので、交代のたびに送り直してください。</p>'+
@@ -1628,20 +1654,24 @@ function openRun(from,to){
   ui.rs={from,to:to==null?-1:to,k:'SB'};fixRs();openSheet('run');
 }
 // 走者の行き先が場面によって変わりやすいときだけ確認する（それ以外は標準の進塁で確定し、「直す」で訂正できる）
-function askRunners(res,B){
+function askRunners(res,B,outs){
   const b1=!!B[1],b23=!!(B[2]||B[3]);
   if(res==='E')return true;
   if(!b1&&!b23)return false;
-  if(res==='1B'||res==='GO'||res==='FC')return b23;
-  if(res==='2B')return b1;
+  if(res==='1B'||res==='2B')return true;              // ヒットでは走者が2つ以上進むことがある
+  if(res==='GO'||res==='FC')return b23;
+  if((res==='FO'||res==='LO')&&outs<2)return b23;     // タッチアップ（生還なら犠牲フライ）
   return false;
 }
 function afterPlace(){
   const S=ui.S,d=defaults(ui.pend.res,S.bases);ui.pend.b=d.b;ui.pend.r=d.r;ui.mode='idle';
-  if(askRunners(ui.pend.res,S.bases)){render();openSheet('adv');}else commitBip();
+  if(askRunners(ui.pend.res,S.bases,S.outs)){render();openSheet('adv');}else commitBip();
 }
 function commitBip(){
-  const p=ui.pend;if(!p)return;const e={t:'bip',res:p.res,b:p.b};if(p.q)e.q=1;
+  const p=ui.pend;if(!p)return;
+  // フライ・ライナーで三塁走者がタッチアップして生還したら犠牲フライにする
+  if((p.res==='FO'||p.res==='LO')&&p.b===0&&p.r&&p.r[3]===4&&ui.S.outs<2)p.res='SF';
+  const e={t:'bip',res:p.res,b:p.b};if(p.q)e.q=1;
   if(p.f)e.f=p.f;if(p.x!=null){e.x=Math.round(p.x);e.y=Math.round(p.y);}
   if(p.r&&Object.keys(p.r).length)e.r=p.r;
   ui.pend=null;ui.mode='idle';closeSheet();pushEv(e);
@@ -1654,10 +1684,17 @@ function saveLineup(){
   const sp=String(d.sp||'').trim().slice(0,20),dh=!d.rows.some(r=>r.p===1);
   const rows=d.rows.map(r=>({n:String(r.n||'').trim().slice(0,20),p:r.p|0,no:digits(r.no).slice(0,3)}));
   g.teams=[ui.S.teams[0],ui.S.teams[1]];g.teams[t]=(String(d.name||'').trim()||g.teams[t]).slice(0,20);
+  if(d.fix){
+    const L=[0,1].map(x=>((g.lu&&g.lu[x]&&g.lu[x].length)?g.lu[x]:defaultLineup()).map(p=>({n:String(p.n||''),p:p.p|0,no:String(p.no||'')})));
+    L[t]=rows;g.lu=L;g.sp=[(g.sp&&g.sp[0])||'',(g.sp&&g.sp[1])||''];g.sp[t]=dh?sp:'';
+    g.upd=Date.now();ui.luDraft=null;save(ui.gid);toast('スタメンを直しました。記録と成績も直しました');render();return;
+  }
   if(!(g.ev||[]).length){g.lu=[ui.S.lu[0],ui.S.lu[1]];g.lu[t]=rows;g.sp=[(g.sp&&g.sp[0])||'',(g.sp&&g.sp[1])||''];g.sp[t]=dh?sp:'';}
   else{const cur=ui.S.lu[t],subs=[];rows.forEach((r,i)=>{if(!cur[i])subs.push({t:'add',tm:t,n:r.n,p:r.p,no:r.no});else if(cur[i].n!==r.n||cur[i].p!==r.p||(cur[i].no||'')!==r.no)subs.push({t:'sub',tm:t,i,n:r.n,p:r.p,no:r.no});});
     if(dh&&sp&&sp!==ui.S.pit[t])subs.push({t:'pc',tm:t,n:sp});g.ev=g.ev.concat(subs);}
-  g.upd=Date.now();ui.luDraft=null;ui.redo=[];save(ui.gid);toast('打順を保存しました');render();
+  const live=(g.ev||[]).length>0;g.upd=Date.now();ui.luDraft=null;ui.redo=[];save(ui.gid);
+  if(live&&ui.luFrom==='score'){ui.luFrom='';ui.tab='score';}
+  toast(live?'交代を記録しました':'打順を保存しました');render();
 }
 
 /* ---------- events ---------- */
@@ -1681,7 +1718,8 @@ const acts={
   },
   open(el){ui.gid=el.dataset.id;ui.tab='score';ui.redo=[];ui.luDraft=null;ui.mode='idle';render();window.scrollTo(0,0);},
   home(){ui.gid=null;ui.mode='idle';ui.pend=null;ui.luDraft=null;render();},
-  tab(el){ui.tab=el.dataset.tab;ui.mode='idle';ui.pend=null;ui.luDraft=null;render();},
+  tab(el){ui.tab=el.dataset.tab;ui.mode='idle';ui.pend=null;ui.luDraft=null;ui.luFrom='';ui.luFix=false;render();},
+  subs(){const S=ui.S;ui.luTeam=S&&!S.ended?1-S.half:ui.luTeam;ui.luFix=false;ui.luDraft=null;ui.luFrom='score';ui.tab='lineup';ui.mode='idle';render();window.scrollTo(0,0);},
   pitch(el){if(canInput())pushEv({t:'p',k:el.dataset.k});},
   hbp(){if(canInput())pushEv({t:'hbp'});},
   undo(){undo();},redo(){redo();},
@@ -1718,6 +1756,7 @@ const acts={
   async img(){toast('画像を作っています…');try{await buildImage();openSheet('img');}catch(e){toast('画像を作れませんでした');}},
   'img-save'(){try{const a=document.createElement('a');a.href=ui.img.url;a.download=ui.img.name;document.body.appendChild(a);a.click();a.remove();}catch(e){toast('画像を長押しして保存してください');}},
   'img-share'(){try{navigator.share({files:[ui.img.file],title:'TapScore'}).catch(()=>{});}catch(e){}},
+  kd(){if(!canInput()||!kdOk(ui.S))return;const q=quickMode(games[ui.gid])&&!(ui.S.b+ui.S.s);pushEv(q?{t:'pa',k:'KD'}:{t:'pa',k:'KD',pk:'S'});},
   more(){openSheet('more');},
   'side-set'(el){const g=games[ui.gid];if(!g||(g.ev||[]).length)return;if(el.dataset.v==='1')swapSides(g);delete g.tbd;g.upd=Date.now();save(ui.gid);
     toast(g.teams[0]+'が先攻、'+g.teams[1]+'が後攻で始めます');render();},
@@ -1741,9 +1780,10 @@ const acts={
   'ed-rbi'(el){const v=+el.dataset.v;if(v<0)delete ui.ed.e.rbi;else ui.ed.e.rbi=v;renderSheet();},
   'ed-to'(el){const e=ui.ed.e;e.to=+el.dataset.v;const outK=e.k==='CS'||e.k==='PO';if(e.to===0&&!outK)e.k='CS';if(e.to!==0&&outK)e.k='SB';renderSheet();},
   'ed-k'(el){ui.ed.e.k=el.dataset.v;renderSheet();},
-  'ed-pa'(el){ui.ed.e={t:'pa',k:el.dataset.v};renderSheet();},
-  'ed-pk'(el){const v=el.dataset.v;ui.ed.e=v==='D'?{t:'hbp'}:{t:'p',k:v};renderSheet();},
+  'ed-pa'(el){const pk=ui.ed.e.pk;ui.ed.e={t:'pa',k:el.dataset.v};if(pk)ui.ed.e.pk=pk;renderSheet();},
+  'ed-pk'(el){if(el.dataset.v==='KD'){ui.ed.e={t:'pa',k:'KD',pk:'S'};renderSheet();return;}const v=el.dataset.v;ui.ed.e=v==='D'?{t:'hbp'}:{t:'p',k:v};renderSheet();},
   'ed-save'(){const g=games[ui.gid],d=ui.ed,e=d.e;
+    if(e.t==='sub'||e.t==='add'||e.t==='pc'){const n=$('#ed-n');if(n)e.n=n.value.trim().slice(0,20);const no=$('#ed-no');if(no)e.no=digits(no.value).slice(0,3);const ps=$('#ed-p');if(ps)e.p=+ps.value;}
     if(e.t==='bip'){if(destConflict(e.b,e.r))return;if(!Object.keys(e.r).length)delete e.r;}
     applyEdit(g.ev.slice(0,d.ei).concat([e],g.ev.slice(d.ei+1)),'訂正しました。後ろの記録も計算し直しました');},
   'ed-del'(){const g=games[ui.gid],d=ui.ed;applyEdit(g.ev.slice(0,d.ei).concat(g.ev.slice(d.ei+1)),'記録を削除しました');},
@@ -1787,13 +1827,15 @@ const acts={
     d.rows[i].n=pl.name;d.rows[i].no=digits(pl.number);render();},
   'lu-add'(){if(ui.luDraft.rows.length<25)ui.luDraft.rows.push({n:'',p:0});render();},
   'lu-del'(){if(ui.luDraft.rows.length>1){ui.luDraft.rows.pop();render();}},
-  'lu-save'(){saveLineup();}
+  'lu-save'(){saveLineup();},
+  'lu-fix'(el){ui.luFix=el.dataset.v==='1';ui.luDraft=null;render();},
+  'lu-back'(){ui.luDraft=null;ui.luFrom='';ui.tab='score';render();}
 };
 document.addEventListener('click',ev=>{
   const el=ev.target.closest('[data-act]');
   if(!el){if(ev.target.id==='sheet'&&Date.now()-(ui.sheetAt||0)>400){if(ui.sheet==='adv')acts['adv-cancel']();else acts['sheet-close']();}return;}
   if(el.disabled)return;const a=el.dataset.act;
-  if(a==='pitch'||a==='hbp'||a==='undo'||a==='bip'||a==='qres'){const now=Date.now();if(now-(ui.tapAt||0)<300)return;ui.tapAt=now;}
+  if(a==='pitch'||a==='hbp'||a==='undo'||a==='bip'||a==='qres'||a==='kd'){const now=Date.now();if(now-(ui.tapAt||0)<300)return;ui.tapAt=now;}
   const fn=acts[a];if(fn)fn(el);
 });
 document.addEventListener('change',ev=>{const el=ev.target;if(el&&el.id==='rsin'){const f=el.files&&el.files[0];el.value='';readRosterFile(f);return;}if(el&&el.id==='bkin'){const f=el.files&&el.files[0];el.value='';restoreBackup(f);return;}if(el&&el.id==='imp'){const f=el.files&&el.files[0];el.value='';importReaderFile(f);}});
@@ -1810,7 +1852,7 @@ document.addEventListener('input',ev=>{
   else{const r=ui.luDraft.rows[+el.dataset.i];if(!r)return;const i=+el.dataset.i,rt=((games[ui.gid]||{}).rt||[])[ui.luDraft.t]||'';
     if(el.dataset.lu==='n'){r.n=el.value;const pl=rosterFind(rt,el.value);if(pl){if(pl.name!==el.value){r.n=pl.name;el.value=pl.name;}if(digits(pl.number)){r.no=digits(pl.number);const ne=$('#lu-no-'+i);if(ne)ne.value=r.no;}}}
     else if(el.dataset.lu==='no'){r.no=digits(el.value);if(!String(r.n||'').trim()){const pl=rosterFind(rt,'',r.no);if(pl){r.n=pl.name;const ne=$('#lu-n-'+i);if(ne)ne.value=pl.name;}}}
-    else{r.p=+el.value;if(r.p===1||ui.luDraft.rows.every(x=>x.p!==1))render();}}
+    else{const old=r.p,v=+el.value;r.p=v;const o=v?ui.luDraft.rows.find(x=>x!==r&&x.p===v):null;if(o){o.p=old;toast((o.n||'その選手')+'は'+(POS[old]?POS[old]:'守備なし')+'へ');}render();}}
 });
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&ui.sheet){if(ui.sheet==='adv')acts['adv-cancel']();else acts['sheet-close']();}});
 document.addEventListener('focusout',()=>{if(ui.needRender)setTimeout(()=>{if(ui.needRender&&!ui.sheet)softRender();},50);});
