@@ -1450,7 +1450,7 @@ function draft(g,S){
 }
 function lineupTab(g,S){
   const t=ui.luTeam,live=(g.ev||[]).length>0&&!S.ended;
-  let h='<div class="seg">'+[0,1].map(x=>'<button data-act="lu-team" data-t="'+x+'" aria-pressed="'+(t===x)+'">'+esc(S.teams[x])+(live?'<small>'+(x===S.half?'攻撃中':'守備中')+'</small>':'<small>'+sideName(g,x)+'</small>')+'</button>').join('')+'</div>';
+  let h=(ui.ins!=null?'<div class="insbar"><span><b>途中に追加しています</b>'+S.inn+'回'+(S.half?'裏':'表')+'の時点の交代として記録します</span></div>':'')+'<div class="seg">'+[0,1].map(x=>'<button data-act="lu-team" data-t="'+x+'" aria-pressed="'+(t===x)+'">'+esc(S.teams[x])+(live?'<small>'+(x===S.half?'攻撃中':'守備中')+'</small>':'<small>'+sideName(g,x)+'</small>')+'</button>').join('')+'</div>';
   if(ui.canWrite&&(g.ev||[]).length)h+='<div class="seg">'+[[false,'選手交代'],[true,'スタメンを直す']].map(x=>'<button data-act="lu-fix" data-v="'+(x[0]?1:0)+'" aria-pressed="'+(!!ui.luFix===x[0])+'">'+x[1]+'</button>').join('')+'</div>'+
     '<p class="hint">'+(ui.luFix?'試合開始時の打順を直します。交代ではなく、最初から入力を間違えていたときに使います。名前を直すと、それまでの記録や成績の名前も直ります。':'代打・代走・守備位置・投手の交代を、まとめて入れて保存できます。守備位置を選ぶと、その位置にいた選手と入れかわります（投手と野手の入れかえも1回で済みます）。')+'</p>';
   if(!ui.canWrite){
@@ -1478,7 +1478,7 @@ function lineupTab(g,S){
   return h;
 }
 function viewGame(){
-  if(ui.ins!=null&&ui.tab!=='score')endInsert();
+  if(ui.ins!=null&&ui.tab!=='score'&&!(ui.tab==='lineup'&&ui.luFrom==='score'))endInsert();
   const g0=games[ui.gid],g=ui.ins!=null?Object.assign({},g0,{ev:(g0.ev||[]).slice(0,ui.ins)}):g0;const S=replay(g);ui.S=S;
   const rec=ui.tab==='score',at=t=>(!S.ended&&S.half===t)?' class="atb"':'';
   let h=rec?'<nav class="top"><button class="back" data-act="home" aria-label="試合一覧へ戻る">‹</button><div class="mini" aria-label="'+esc(S.teams[0])+' '+S.R[0]+' 対 '+S.R[1]+' '+esc(S.teams[1])+'"><span'+at(0)+'>'+esc(S.teams[0])+'</span><b>'+S.R[0]+'</b><i>–</i><b>'+S.R[1]+'</b><span'+at(1)+'>'+esc(S.teams[1])+'</span></div></nav>'+banners()
@@ -1702,7 +1702,8 @@ function saveLineup(){
   }
   if(!(g.ev||[]).length){g.lu=[ui.S.lu[0],ui.S.lu[1]];g.lu[t]=rows;g.sp=[(g.sp&&g.sp[0])||'',(g.sp&&g.sp[1])||''];g.sp[t]=dh?sp:'';}
   else{const cur=ui.S.lu[t],subs=[];for(let i=cur.length;i>rows.length;i--)subs.push({t:'drop',tm:t,i:i-1});rows.forEach((r,i)=>{if(!cur[i])subs.push({t:'add',tm:t,n:r.n,p:r.p,no:r.no});else if(cur[i].n!==r.n||cur[i].p!==r.p||(cur[i].no||'')!==r.no)subs.push({t:'sub',tm:t,i,n:r.n,p:r.p,no:r.no});});
-    if(dh&&sp&&sp!==ui.S.pit[t])subs.push({t:'pc',tm:t,n:sp});g.ev=g.ev.concat(subs);}
+    if(dh&&sp&&sp!==ui.S.pit[t])subs.push({t:'pc',tm:t,n:sp});
+    if(ui.ins!=null){g.ev=g.ev.slice();g.ev.splice(ui.ins,0,...subs);ui.ins+=subs.length;ui.insN=(ui.insN||0)+subs.length;}else g.ev=g.ev.concat(subs);}
   const live=(g.ev||[]).length>0;g.upd=Date.now();ui.luDraft=null;ui.redo=[];save(ui.gid);
   if(live&&ui.luFrom==='score'){ui.luFrom='';ui.tab='score';}
   toast(live?'交代を記録しました':'打順を保存しました');render();
