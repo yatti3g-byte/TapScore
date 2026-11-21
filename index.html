@@ -438,7 +438,7 @@ function replay(g){
   const bt=()=>S.half,ft=()=>1-S.half;
   const cur=()=>{const t=bt();const i=S.bat[t]%S.lu[t].length;return {i,n:pname(S.lu[t][i],i)};};
   const bs=(t,i)=>{const n=pname(S.lu[t][i],i);const k=i+'|'+n;let r=S.bst[t].get(k);
-    if(!r){r={i,n,pos:S.lu[t][i].p,seq:S.bst[t].size,pas:[],gdp:0,pa:0,ab:0,h:0,d2:0,d3:0,hr:0,tb:0,rbi:0,r:0,bb:0,hbp:0,k:0,sh:0,sf:0,sb:0,cs:0,rab:0,rh:0};S.bst[t].set(k,r);}return r;};
+    if(!r){r={i,n,pos:S.lu[t][i]?S.lu[t][i].p:0,seq:S.bst[t].size,pas:[],gdp:0,pa:0,ab:0,h:0,d2:0,d3:0,hr:0,tb:0,rbi:0,r:0,bb:0,hbp:0,k:0,sh:0,sf:0,sb:0,cs:0,rab:0,rh:0};S.bst[t].set(k,r);}return r;};
   // One row per pitcher, created at his first pitch. lead/on describe the situation he entered in (for save/hold).
   const ps=()=>{const t=ft();const n=S.pit[t];let r=S.pst[t].get(n);
     if(!r){r={n,byInn:{},ra:0,raEnt:0,out:false,leave:null,kill:false,np:0,bf:0,outs:0,h:0,bb:0,hbp:0,k:0,r:0,er:0,i0:S.inn,i1:S.inn,lead:S.R[t]-S.R[1-t],on:[1,2,3].filter(k=>S.bases[k]).length,starter:S.pst[t].size===0,lost:false};S.pst[t].set(n,r);}r.i1=S.inn;return r;};
@@ -534,6 +534,8 @@ function replay(g){
         break;}
       case 'bat':{const L=S.lu[e.tm];if(!L||!(e.i>=0&&e.i<L.length))break;S.bat[e.tm]=e.i;
         entry({k:'sub',text:teams[e.tm]+'：次の打者を'+(e.i+1)+'番に合わせた'});break;}
+      case 'drop':{const L=S.lu[e.tm];if(!L||L.length<=1||(e.i!=null&&e.i!==L.length-1))break;const i=L.length-1,nm=pname(L[i],i);L.pop();if(S.bat[e.tm]>=L.length)S.bat[e.tm]=0;
+        entry({k:'sub',text:teams[e.tm]+'：'+(i+1)+'番 '+nm+' が打順から外れた'});break;}
       case 'add':{const L=S.lu[e.tm];if(!L||L.length>=25)break;L.push({n:String(e.n||''),p:e.p|0,no:String(e.no||'')});const i=L.length-1;
         entry({k:'sub',text:teams[e.tm]+'：'+(i+1)+'番に '+pname(L[i],i)+' が入った'+(POS[e.p|0]?'（'+POS[e.p|0]+'）':'')});break;}
       case 'tb':{
@@ -1113,7 +1115,7 @@ function viewHome(){
       '<label class="btn wide filebtn" for="imp">試合のファイルを開く<small>TapScoreやスコアブック読み取りで保存したHTML</small></label><input id="imp" type="file" accept=".html,.htm,text/html" hidden>'+
       (ui.local?'<div class="row"><button class="btn filebtn" data-act="backup">バックアップを保存<small>全試合と名簿</small></button><label class="btn filebtn" for="bkin">バックアップを戻す<small>保存したファイルを選ぶ</small></label><input id="bkin" type="file" accept=".json,application/json" hidden></div>':'')+
       '<button class="link" data-act="sample">動作確認用のサンプル試合を入れる</button>';}
-  h+=ui.local?'<p class="foot">TapScore 0.21　記録はこの端末のブラウザに保存されます。ブラウザのデータを消すと記録も消えるので、試合のあとは「バックアップを書き出す」で控えを残してください。記録係を交代するときは、試合画面の「その他」→「記録係を交代する」でリンクを送ってください。</p>':'<p class="foot">記録係を交代しても、同じ試合を開けば続きから入力できます。見るだけの人にも速報が届きます。</p>';
+  h+=ui.local?'<p class="foot">TapScore 0.22　記録はこの端末のブラウザに保存されます。ブラウザのデータを消すと記録も消えるので、試合のあとは「バックアップを書き出す」で控えを残してください。記録係を交代するときは、試合画面の「その他」→「記録係を交代する」でリンクを送ってください。</p>':'<p class="foot">記録係を交代しても、同じ試合を開けば続きから入力できます。見るだけの人にも速報が届きます。</p>';
   return h;
 }
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
@@ -1460,10 +1462,10 @@ function lineupTab(g,S){
   {const tr=rTeam(rt),used=new Set(d.rows.map(r=>String(r.n||'').trim()));
    const left=tr?tr.players.filter(p=>p.name&&!used.has(p.name)):[];
    if(left.length)h+='<h4 class="lh">名簿から打順に入れる（押した順に'+(d.rows.findIndex(r=>!String(r.n||'').trim())+1||d.rows.length+1)+'番から入ります）</h4><div class="chips">'+left.map(p=>'<button class="chip" data-act="lu-pick" data-v="'+esc(p.name)+'">'+(digits(p.number)?'<b>'+digits(p.number)+'</b> ':'')+esc(p.name)+'</button>').join('')+'</div>';}
-  const dh=!d.rows.some(r=>r.p===1),canDel=d.fix?false:started?d.rows.length>d.base:d.rows.length>1;
+  const dh=!d.rows.some(r=>r.p===1),canDel=d.rows.length>1;
   if(dh)h+='<label class="fld" for="lu-sp"><span>'+(d.fix?'先発投手（打順に入らない・DHのとき）':'投手（打順に入らない・DHのとき）')+'</span><input id="lu-sp" data-lu="sp" list="dl-lu" maxlength="20" placeholder="投手の名前" value="'+esc(d.sp)+'"></label>';
-  if(!d.fix)h+='<div class="row"><button class="btn" data-act="lu-add"'+(d.rows.length>=25?' disabled':'')+'>打者を追加（'+(d.rows.length+1)+'番）</button><button class="btn" data-act="lu-del"'+(canDel?'':' disabled')+'>最後の打者を消す</button></div>';
-  h+='<div class="row">'+(ui.luFrom==='score'?'<button class="btn" data-act="lu-back">やめる</button>':'')+'<button class="btn primary" data-act="lu-save">'+(d.fix?'スタメンを保存':started?'交代を記録':'打順を保存')+'</button></div><p class="hint">'+(d.fix?'途中から出た選手の名前は、「経過」でその交代の記録を押して直せます。':started?'試合中の変更は、選手交代として「経過」に残ります。追加した打者は打順の最後に入り、打順が回ってきたときから打ちます。':(g.tbd?'先攻・後攻が決まったら「記録」タブで選んでください。入れた打順はそのまま引き継がれます。':'')+'10人目以降も追加できます（全員打順のときなど）。DHを使うときは、打者の守備位置を「指（DH）」にして、投手を打順の外に入れてください。')+'</p>'+
+  h+='<div class="row"><button class="btn" data-act="lu-add"'+(d.rows.length>=25?' disabled':'')+'>打者を追加（'+(d.rows.length+1)+'番）</button><button class="btn" data-act="lu-del"'+(canDel?'':' disabled')+'>最後の打者を消す</button></div>';
+  h+='<div class="row">'+(ui.luFrom==='score'?'<button class="btn" data-act="lu-back">やめる</button>':'')+'<button class="btn primary" data-act="lu-save">'+(d.fix?'スタメンを保存':started?'交代を記録':'打順を保存')+'</button></div><p class="hint">'+(d.fix?'途中から出た選手の名前は、「経過」でその交代の記録を押して直せます。打順の人数を直すと、それまでの打席の打者も数え直します。':started?'試合中の変更は、選手交代として「経過」に残ります。追加した打者は打順の最後に入り、打順が回ってきたときから打ちます。最後の打者を消すと、次からその打者を飛ばします。':(g.tbd?'先攻・後攻が決まったら「記録」タブで選んでください。入れた打順はそのまま引き継がれます。':'')+'10人目以降も追加できます（全員打順のときなど）。DHを使うときは、打者の守備位置を「指（DH）」にして、投手を打順の外に入れてください。')+'</p>'+
     '';
   return h;
 }
@@ -1690,7 +1692,7 @@ function saveLineup(){
     g.upd=Date.now();ui.luDraft=null;save(ui.gid);toast('スタメンを直しました。記録と成績も直しました');render();return;
   }
   if(!(g.ev||[]).length){g.lu=[ui.S.lu[0],ui.S.lu[1]];g.lu[t]=rows;g.sp=[(g.sp&&g.sp[0])||'',(g.sp&&g.sp[1])||''];g.sp[t]=dh?sp:'';}
-  else{const cur=ui.S.lu[t],subs=[];rows.forEach((r,i)=>{if(!cur[i])subs.push({t:'add',tm:t,n:r.n,p:r.p,no:r.no});else if(cur[i].n!==r.n||cur[i].p!==r.p||(cur[i].no||'')!==r.no)subs.push({t:'sub',tm:t,i,n:r.n,p:r.p,no:r.no});});
+  else{const cur=ui.S.lu[t],subs=[];for(let i=cur.length;i>rows.length;i--)subs.push({t:'drop',tm:t,i:i-1});rows.forEach((r,i)=>{if(!cur[i])subs.push({t:'add',tm:t,n:r.n,p:r.p,no:r.no});else if(cur[i].n!==r.n||cur[i].p!==r.p||(cur[i].no||'')!==r.no)subs.push({t:'sub',tm:t,i,n:r.n,p:r.p,no:r.no});});
     if(dh&&sp&&sp!==ui.S.pit[t])subs.push({t:'pc',tm:t,n:sp});g.ev=g.ev.concat(subs);}
   const live=(g.ev||[]).length>0;g.upd=Date.now();ui.luDraft=null;ui.redo=[];save(ui.gid);
   if(live&&ui.luFrom==='score'){ui.luFrom='';ui.tab='score';}
@@ -1826,7 +1828,10 @@ const acts={
     let i=d.rows.findIndex(r=>!String(r.n||'').trim());if(i<0){if(d.rows.length>=25)return;d.rows.push({n:'',p:0,no:''});i=d.rows.length-1;}
     d.rows[i].n=pl.name;d.rows[i].no=digits(pl.number);render();},
   'lu-add'(){if(ui.luDraft.rows.length<25)ui.luDraft.rows.push({n:'',p:0});render();},
-  'lu-del'(){if(ui.luDraft.rows.length>1){ui.luDraft.rows.pop();render();}},
+  'lu-del'(){const d=ui.luDraft;if(!d||d.rows.length<=1)return;const i=d.rows.length-1,r=d.rows[i];
+    const batted=(d.fix||(games[ui.gid].ev||[]).length)&&ui.S&&[...ui.S.bst[d.t].values()].some(x=>x.i===i&&x.pa>0);
+    const go=()=>{d.rows.pop();render();};
+    if(batted&&i<d.base){ui.conf={msg:(i+1)+'番 '+(r.n||'')+'を打順から消しますか？'+(d.fix?'これまでの打席の打者を数え直します。':'次からこの打者を飛ばします。これまでの成績は残ります。'),yes:'消す',fn:go};openSheet('confirm');}else go();},
   'lu-save'(){saveLineup();},
   'lu-fix'(el){ui.luFix=el.dataset.v==='1';ui.luDraft=null;render();},
   'lu-back'(){ui.luDraft=null;ui.luFrom='';ui.tab='score';render();}
