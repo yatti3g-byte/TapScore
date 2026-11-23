@@ -1141,10 +1141,10 @@ function viewHome(){
   let h='<header class="mast"><button class="savest" data-act="save-retry"></button><h1>⚾ TapScore</h1><p>野球のスコアを、スマホのタップで記録する</p></header>'+banners();
   if(ui.canWrite)h+='<button class="btn primary wide" data-act="new">新しい試合を始める</button>';
   const ids=Object.keys(games).sort((a,b)=>(games[b].created||0)-(games[a].created||0));
-  if(ui.loading)h+='<p class="empty">読み込み中…</p>';
-  else if(!ids.length)h+='<p class="empty">まだ試合がありません。</p>';
   if(ui.canWrite&&!ui.loading){let seen=false;try{seen=!!localStorage.getItem('tapscore-tour-seen');}catch(e){}
     if(!ids.length||!seen)h+='<div class="tourcard"><p><b>はじめての方へ</b><br>サンプルの試合を使って、どこを見れば何がわかるかを1分で案内します。</p><button class="btn wide" data-act="tour-new">画面の見方を見る</button></div>';}
+  if(ui.loading)h+='<p class="empty">読み込み中…</p>';
+  else if(!ids.length)h+='<p class="empty">まだ試合がありません。</p>';
   else{
     h+='<ul class="games">';
     ids.forEach(id=>{
