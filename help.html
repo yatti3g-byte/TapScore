@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TapScore 使い方</title>
+<meta name="theme-color" content="#f6f5f0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%E2%9A%BE%3C/text%3E%3C/svg%3E">
+<style>
+/* TapScore / スコアブック読み取り と同じブランド */
+:root{--paper:#f6f5f0;--surface:#fff;--ink:#1f2a22;--muted:#6b756e;--line:#d9d8d0;--accent:#2f7d4f;--accent2:#e8f3ec;--hit:#c0392b;--wn:#fff4d6}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.75;font-size:16px}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 64px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.brand{font-weight:800;font-size:20px;letter-spacing:.02em}
+.open{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;border-radius:12px;padding:10px 16px;font-size:15px}
+h1{font-size:26px;line-height:1.35;margin:18px 0 4px}
+.lead{color:var(--muted);margin:0 0 18px}
+nav.toc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:22px}
+nav.toc b{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+nav.toc ol{margin:0;padding-left:1.4em;columns:2;column-gap:20px}
+nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+@media (max-width:480px){nav.toc ol{columns:1}}
+section{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 18px 8px;margin:0 0 16px;scroll-margin-top:12px}
+h2{font-size:20px;margin:0 0 10px;display:flex;align-items:center;gap:10px}
+h2 .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent2);color:var(--accent);font-size:15px;flex:none}
+h3{font-size:16px;margin:18px 0 6px}
+p{margin:0 0 12px}
+ol.steps,ul.pts{margin:0 0 12px;padding-left:1.4em}
+ol.steps li,ul.pts li{margin:4px 0}
+.b{display:inline-block;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0 7px;font-weight:700;font-size:.92em;line-height:1.7;white-space:nowrap}
+.b.p{background:var(--accent);border-color:var(--accent);color:#fff}
+.b.t{background:var(--accent2);border-color:var(--accent);color:var(--accent)}
+.note{background:var(--accent2);border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:15px}
+.warn{background:var(--wn);border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:15px}
+table{border-collapse:collapse;width:100%;margin:0 0 12px;font-size:15px}
+th,td{border-bottom:1px solid var(--line);text-align:left;padding:7px 6px;vertical-align:top}
+th{color:var(--muted);font-weight:700;font-size:13px}
+td:first-child{font-weight:700;width:30%}
+td .b{white-space:normal}
+table{table-layout:fixed;word-break:break-word}
+/* ボタン配置の図 */
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-width:360px;margin:6px 0 14px}
+.pad span{display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:700;font-size:13px;min-height:34px}
+.pad .r{min-height:28px;font-weight:500;font-size:12px;color:var(--muted)}
+.pad .g{min-height:44px;font-size:15px}
+.pad .h{border-bottom:3px solid var(--hit)}
+.pad .o{border-bottom:3px solid var(--accent)}
+dl.faq dt{font-weight:700;margin-top:12px}
+dl.faq dd{margin:2px 0 10px}
+footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
+footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><span class="brand">⚾ TapScore</span><a class="open" href="./">アプリを開く</a></header>
+
+<h1>TapScore の使い方</h1>
+<p class="lead">スマホのタップで野球のスコアをつけるアプリです。インストールもログインもいりません。</p>
+
+<nav class="toc" aria-label="目次"><b>目次</b><ol>
+<li><a href="#start">はじめに</a></li>
+<li><a href="#before">試合の前に</a></li>
+<li><a href="#record">記録のつけ方</a></li>
+<li><a href="#plays">迷いやすいプレー</a></li>
+<li><a href="#subs">選手交代</a></li>
+<li><a href="#fix">間違えたとき</a></li>
+<li><a href="#end">試合の終わり</a></li>
+<li><a href="#share">記録係の交代・共有</a></li>
+<li><a href="#reader">スコアブック読み取りとの連携</a></li>
+<li><a href="#backup">記録を守る</a></li>
+<li><a href="#faq">よくある質問</a></li>
+</ol></nav>
+
+<section id="start"><h2><span class="n">1</span>はじめに</h2>
+<p>アプリのページを開けば、すぐに使えます。試合中にすぐ開けるように、ホーム画面に追加しておくと便利です。</p>
+<ul class="pts">
+<li><b>iPhone（Safari）</b>：共有ボタン → 「ホーム画面に追加」</li>
+<li><b>Android（Chrome）</b>：右上の︙ → 「ホーム画面に追加」</li>
+</ul>
+<div class="warn">記録は<b>このスマホのブラウザの中</b>に保存されます。サーバーには送られません。ブラウザのデータを消すと記録も消えるので、試合のあとはバックアップを残してください（<a href="#backup">記録を守る</a>）。</div>
+<p>どんなアプリか試したいときは、トップ画面の <span class="b">動作確認用のサンプル試合を入れる</span> で、試合途中や試合終了のサンプルを入れられます。</p>
+</section>
+
+<section id="before"><h2><span class="n">2</span>試合の前に</h2>
+<h3>名簿を登録する（なくても使えます）</h3>
+<p>トップ画面の <span class="b">自チームの名簿</span> で、クラブ・チームごとに背番号と名前を登録します。登録しておくと、打順を名前のタップだけで入れられます。クラブはいくつでも登録できます。スコアブック読み取りで書き出した名簿のCSVも、そのまま読み込めます。</p>
+
+<h3>新しい試合を作る</h3>
+<ol class="steps">
+<li>トップ画面の <span class="b p">新しい試合を始める</span> を押します。</li>
+<li>自チームは前回のチームが最初から入っています。相手チーム名は、あとで入れてもかまいません。</li>
+<li><span class="b p">試合を作る</span> を押すと、打順の画面が開きます。</li>
+</ol>
+<p class="note">日付は今日、回数と入力のしかたは前回と同じで始まります。どれもあとから <span class="b">⚙ 試合の設定</span> で変えられます。</p>
+
+<h3>打順を入れる</h3>
+<ul class="pts">
+<li><span class="b">前回の打順を入れる</span>：同じチームの直近の試合のスタメンが、背番号・守備位置ごと入ります。変わったところだけ直してください。</li>
+<li><b>名簿から入れる</b>：画面下の名前を押した順に、1番から入ります。</li>
+<li><b>直接入力</b>：名前を空欄のままにすると「名前不明」として記録できます。あとから直せます。</li>
+<li><b>DH</b>：打者の守備位置を「指（DH）」にすると、投手を打順の外に入れる欄が出ます。</li>
+<li><b>10人目以降</b>：<span class="b">打者を追加</span> で増やせます（全員打順のときなど）。<span class="b">最後の打者を消す</span> で減らせます。</li>
+</ul>
+<p>最後に <span class="b p">打順を保存</span> を押します。相手チームの打順も、上のチーム名を切りかえれば同じように入れられます。</p>
+
+<h3>先攻・後攻を選ぶ</h3>
+<p>打順を決めたあとに先攻・後攻が決まることが多いので、<span class="b">記録</span> タブを開いたときに選びます。入れた打順はそのまま引き継がれます。</p>
+</section>
+
+<section id="record"><h2><span class="n">3</span>記録のつけ方</h2>
+<p>入力のしかたは2つあり、試合の途中でも <span class="b">その他</span> から切りかえられます。</p>
+<table>
+<tr><th></th><th>向いている人</th><th>わかること</th></tr>
+<tr><td>1球ごと</td><td>1球ずつ見られる記録係</td><td>投球数、カウント、球種（見逃し・空振り・ファウル）</td></tr>
+<tr><td>打席の結果だけ</td><td>結果だけ押せればいい人</td><td>打席の結果。投球数は数えません</td></tr>
+</table>
+
+<h3>1球ごとに入れる</h3>
+<ol class="steps">
+<li>1球ごとに <span class="b">ボール</span> <span class="b">見逃しストライク</span> <span class="b">空振りストライク</span> <span class="b">ファウル</span> のどれかを押します。四球・三振は自動で記録されます。</li>
+<li>打ったら <span class="b">打った（インプレー）</span> を押して、打球の結果を選び、捕った野手を選びます。</li>
+<li>先に図の野手をタップして、それから結果を選ぶこともできます（こちらのほうが早く入れられます）。</li>
+</ol>
+
+<h3>打席の結果だけを入れる</h3>
+<p>結果のボタンを押して、捕った野手を選ぶだけです。四球・死球・三振は1タップで記録されます。ボタンは、よく使う結果ほど下の段（親指に近いところ）で大きくしています。</p>
+<div class="pad" aria-label="ボタンの並び">
+<span class="r h">二塁打</span><span class="r h">三塁打</span><span class="r h">本塁打</span><span class="r o">野選</span>
+<span class="r">犠打</span><span class="r">犠飛</span><span class="r">併殺</span><span class="r">振り逃げ</span>
+<span class="o">四球</span><span class="o">死球</span><span class="o">失策</span><span>ライナー</span>
+<span class="g h">単打</span><span class="g">ゴロ</span><span class="g">フライ</span><span class="g">三振</span>
+</div>
+<p>その場面で起こりえない結果（走者がいないときの併殺・犠打など）は、押せないようになっています。</p>
+
+<h3>走者の確認</h3>
+<p>走者がいる場面でヒットやゴロなどを入れると、走者を確認する画面が出ます。上から打者・1塁走者・2塁走者・3塁走者の順に並ぶので、それぞれ <span class="b">そのまま</span> <span class="b">2塁</span> <span class="b">生還</span> <span class="b">アウト</span> などを選んで <span class="b p">この内容で記録</span> を押します。ふつうの進み方は最初から選ばれているので、違うときだけ直してください。</p>
+
+<h3>盗塁・暴投など</h3>
+<p>打席の途中の走者の動きは <span class="b">盗塁・進塁</span> から入れます。走者と行き先を選び、理由（盗塁・暴投・捕逸・ボーク・その他、アウトなら盗塁死・走塁死／けん制死）を押すと記録されます。</p>
+
+<p class="note">画面上の「直前：」に、いま入れた記録が出ます。間違えたらすぐ横の <span class="b">直す</span> で直せます。</p>
+</section>
+
+<section id="plays"><h2><span class="n">4</span>迷いやすいプレー</h2>
+<table>
+<tr><th>プレー</th><th>入れ方</th></tr>
+<tr><td>犠牲フライ</td><td><span class="b">フライ</span> を選び、走者の確認で3塁走者を <span class="b">生還</span> にします。自動で犠牲フライになります。<span class="b">犠飛</span> を直接押してもかまいません。</td></tr>
+<tr><td>ゴロの併殺</td><td><span class="b">併殺</span> → <span class="b">ゴロ</span> → 捕った野手。打者の「併殺打」に数えます。</td></tr>
+<tr><td>ライナー・フライで<br>走者が戻れない</td><td><span class="b">併殺</span> → <span class="b">ライナー</span> か <span class="b">フライ</span> → 捕った野手。走者が2人以上なら、アウトになった走者を選びます。</td></tr>
+<tr><td>振り逃げ</td><td><span class="b">振り逃げ</span> を押すと、打者が1塁に出た記録になります（三振として数えます）。1塁が空いているか2アウトのときだけ押せます。</td></tr>
+<tr><td>ヒットで走者が<br>2つ以上進む</td><td>走者の確認で、行き先を <span class="b">3塁</span> や <span class="b">生還</span> にします。</td></tr>
+<tr><td>死球</td><td><span class="b">死球</span> を押します。四球とは別に数えます。</td></tr>
+<tr><td>タイブレーク</td><td>その回の最初に <span class="b">その他</span> → <span class="b">タイブレーク（無死一・二塁）</span> か <span class="b">（無死満塁）</span>。置かれた走者が還っても、投手の自責点にはなりません。</td></tr>
+</table>
+</section>
+
+<section id="subs"><h2><span class="n">5</span>選手交代</h2>
+<p>代打・代走・守備位置の変更・投手交代は、どれも <span class="b">選手交代</span> の1つの画面で入れます。いくつかの交代が同時に起きても、まとめて1回で保存できます。</p>
+<ol class="steps">
+<li>記録画面の <span class="b">選手交代</span> を押します（守備側のチームが開きます）。</li>
+<li>入れかわる打順のところに、新しい選手の名前を入れます。</li>
+<li>守備位置を選ぶと、その位置にいた選手と自動で入れかわります。投手と野手の入れかえも1回で済みます。</li>
+<li><span class="b p">交代を記録</span> を押します。</li>
+</ol>
+<p>交代は「経過」に残り、成績表には「打左」「左投」のように守備位置の移り変わりが出ます（スコアブック読み取りと同じ書き方です）。</p>
+</section>
+
+<section id="fix"><h2><span class="n">6</span>間違えたとき</h2>
+<table>
+<tr><th>こんなとき</th><th>やり方</th></tr>
+<tr><td>いま入れた記録</td><td><span class="b">↩ 取り消し</span> で1つ戻します。または「直前：」の横の <span class="b">直す</span>。</td></tr>
+<tr><td>前の打席の記録</td><td><span class="b">経過</span> タブで記録をタップして、結果・野手・走者・打点を直し、<span class="b p">訂正を保存</span>。あとの記録は自動で計算し直します。</td></tr>
+<tr><td>記録を入れ忘れた</td><td><span class="b">経過</span> で、抜けた場所のすぐあとの記録をタップ → <span class="b">この記録の前に、記録を追加する</span>。入れ終わったら <span class="b p">追加を終える</span>。選手交代も途中に追加できます。</td></tr>
+<tr><td>スタメンが違っていた</td><td><span class="b">打順</span> タブ → <span class="b t">スタメンを直す</span>。名前を直すと、それまでの記録の名前も直ります。</td></tr>
+<tr><td>途中から出た選手の名前</td><td><span class="b">経過</span> でその交代の記録をタップして直します。</td></tr>
+<tr><td>勝利投手などの判定</td><td>試合終了後に <span class="b">成績</span> タブの <span class="b">勝敗・セーブ・ホールドを直す</span>。大会独自の決まりがあるときに使います。</td></tr>
+</table>
+<p>訂正を間違えたときは、<span class="b">経過</span> の上の <span class="b">直前の訂正を取り消す</span> で元に戻せます。</p>
+</section>
+
+<section id="end"><h2><span class="n">7</span>試合の終わり</h2>
+<p>規定の回が終わって勝敗が決まると、自動で「試合終了」になります。時間切れ・コールド・降雨などで途中で終わるときは、<span class="b">その他</span> → <span class="b">試合を終了する</span> で理由を選びます。取り消せば再開できます。</p>
+<p><span class="b">成績</span> タブでは、スコアボード・打撃成績・投手成績（イニングごとの投球数つき）が見られます。勝利・敗戦・セーブ・ホールドは公認野球規則とNPBの規定で自動判定します。</p>
+<ul class="pts">
+<li><span class="b">画像で保存</span>：成績を1枚の画像にして、端末に保存したりLINEなどで送ったりできます。</li>
+<li><span class="b">HTMLで保存</span>：成績のページをファイルで残します。このファイルはTapScoreで読み込み直して、訂正や続きの入力ができます。</li>
+</ul>
+</section>
+
+<section id="share"><h2><span class="n">8</span>記録係の交代・共有</h2>
+<ol class="steps">
+<li><span class="b">その他</span> → <span class="b">記録係を交代する・途中経過を送る</span> を押します。</li>
+<li><span class="b">LINEなどで送る</span> か <span class="b">リンクをコピー</span> で、次の記録係に送ります。</li>
+<li>受け取った人がリンクを開くと、いまの記録がそのまま入り、続きから入力できます。</li>
+</ol>
+<div class="warn">送ったあとに入れた記録は、相手に自動では届きません（リアルタイムの共有ではありません）。交代のたびに、そのとき記録している人がリンクを送り直してください。同時に2人で記録すると、記録が分かれてしまいます。</div>
+<p>途中経過を見せたいだけの人にも、同じリンクを送れます。</p>
+</section>
+
+<section id="reader"><h2><span class="n">9</span>スコアブック読み取りとの連携</h2>
+<p>TapScoreとスコアブック読み取りは同じブランドのアプリで、データをやりとりできます。</p>
+<ul class="pts">
+<li><b>試合</b>：スコアブック読み取りで保存したHTMLを、トップ画面の <span class="b">試合のファイルを開く</span> から読み込むと、TapScoreで訂正や続きの入力ができます。紙のスコアブックには球数がないので、読み込んだ打席は「打席の結果だけ」の記録になります。</li>
+<li><b>名簿</b>：どちらのアプリで書き出したCSVも、もう一方で読み込めます。ファイル名（名簿_クラブ名_日付.csv）のクラブ名で、同じクラブがあれば置きかえ、なければ追加します。</li>
+</ul>
+</section>
+
+<section id="backup"><h2><span class="n">10</span>記録を守る</h2>
+<p>記録はこのスマホのブラウザにだけ保存されます。次のようなときは消えることがあります。</p>
+<ul class="pts">
+<li>ブラウザの履歴・Webサイトのデータを消したとき</li>
+<li>プライベートモード（シークレットモード）で使ったとき</li>
+<li>スマホを買いかえたとき、別のブラウザで開いたとき</li>
+</ul>
+<p>試合のあとは、トップ画面の <span class="b">バックアップを保存</span> で、全試合と名簿をファイルに書き出しておいてください。新しいスマホでは <span class="b">バックアップを戻す</span> で戻せます。</p>
+<p class="note">画面に出る「✓ 保存済み」が、この端末に保存できている印です。保存できていないときは赤いお知らせが出るので、すぐにバックアップを書き出してください。</p>
+</section>
+
+<section id="faq"><h2><span class="n">11</span>よくある質問</h2>
+<dl class="faq">
+<dt>お金はかかりますか？ 登録は必要ですか？</dt>
+<dd>どちらも不要です。ページを開くだけで使えます。</dd>
+<dt>電波が悪いグラウンドでも使えますか？</dt>
+<dd>ページを開いたままなら、電波がなくても入力を続けられます（記録はスマホの中に保存されます）。ページを開き直すときと、リンクを送るときは通信が必要なので、試合の前に開いておいてください。</dd>
+<dt>試合中に画面が消えて困ります。</dt>
+<dd>記録画面を開いている間は、なるべく画面が消えないようにしています。スマホの設定によっては消えるので、自動ロックの時間を長くしておくと安心です。</dd>
+<dt>打順に名前を入れていない選手は？</dt>
+<dd>「名前不明」として記録されます。あとから <span class="b">スタメンを直す</span> で名前を入れれば、成績にも反映されます。</dd>
+<dt>試合を消したい。</dt>
+<dd>トップ画面の試合一覧で、その試合の <span class="b">削除</span> を押します。消す前にバックアップを残しておくと安心です。</dd>
+</dl>
+</section>
+
+<footer><a href="./">TapScore を開く</a>　·　スコアブック読み取りと同じブランドのアプリです</footer>
+</div>
+</body>
+</html>

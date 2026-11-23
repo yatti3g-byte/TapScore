@@ -72,6 +72,7 @@ button{cursor:pointer}
 .pill.done{color:var(--muted)}
 .empty{color:var(--muted);text-align:center;padding:24px 0;margin:0}
 .foot{font-size:13px;color:var(--muted);margin:0}
+.helpl{display:block;text-align:center;font-weight:700;color:var(--accent);text-decoration:none;padding:12px;margin:4px 0 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 
 .top{display:flex;align-items:center;gap:10px}
 .back{background:none;border:0;padding:8px 4px;font-weight:700;white-space:nowrap}
@@ -1143,6 +1144,7 @@ function viewHome(){
       '<label class="btn wide filebtn" for="imp">試合のファイルを開く<small>TapScoreやスコアブック読み取りで保存したHTML</small></label><input id="imp" type="file" accept=".html,.htm,text/html" hidden>'+
       (ui.local?'<div class="row"><button class="btn filebtn" data-act="backup">バックアップを保存<small>全試合と名簿</small></button><label class="btn filebtn" for="bkin">バックアップを戻す<small>保存したファイルを選ぶ</small></label><input id="bkin" type="file" accept=".json,application/json" hidden></div>':'')+
       '<button class="link" data-act="sample">動作確認用のサンプル試合を入れる</button>';}
+  h+='<a class="helpl" href="help.html">？ 使い方を見る</a>';
   h+=ui.local?'<p class="foot">TapScore 0.25　記録はこの端末のブラウザに保存されます。ブラウザのデータを消すと記録も消えるので、試合のあとは「バックアップを書き出す」で控えを残してください。記録係を交代するときは、試合画面の「その他」→「記録係を交代する」でリンクを送ってください。</p>':'<p class="foot">記録係を交代しても、同じ試合を開けば続きから入力できます。見るだけの人にも速報が届きます。</p>';
   return h;
 }
