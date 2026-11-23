@@ -369,6 +369,20 @@ h2,.rv h2{font-weight:700;font-size:16px}
 .place{border-left-color:var(--accent)}
 .rv{--ac2:var(--accent2)}
 #toast{background:var(--ink);color:var(--paper)}
+/* ---------- はじめての人向けツアー（画面の見方） ---------- */
+#tour{position:fixed;inset:0;z-index:200}
+#tour .tmask{position:absolute;inset:0}
+#tour .tspot{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,28,22,.62);outline:3px solid #fff;transition:all .2s ease;pointer-events:none}
+#tour .tcard{position:fixed;left:12px;right:12px;max-width:520px;margin:0 auto;background:var(--surface);color:var(--ink);border-radius:16px;padding:14px 16px 12px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+#tour .tcard h3{margin:0 0 4px;font-size:17px}
+#tour .tcard p{margin:0 0 10px;font-size:15px;line-height:1.65}
+#tour .tcard .tn{float:right;font-size:13px;color:var(--muted);font-weight:700}
+#tour .tbar{display:flex;align-items:center;gap:8px}
+#tour .tbar .link{margin-right:auto}
+#tour .tbar .btn{min-height:44px;padding:8px 16px}
+.tourcard{background:var(--accent2);border:1px solid var(--accent);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.tourcard p{margin:0 0 8px;font-size:15px}
+
 </style>
 </head>
 <body>
@@ -1129,6 +1143,8 @@ function viewHome(){
   const ids=Object.keys(games).sort((a,b)=>(games[b].created||0)-(games[a].created||0));
   if(ui.loading)h+='<p class="empty">読み込み中…</p>';
   else if(!ids.length)h+='<p class="empty">まだ試合がありません。</p>';
+  if(ui.canWrite&&!ui.loading){let seen=false;try{seen=!!localStorage.getItem('tapscore-tour-seen');}catch(e){}
+    if(!ids.length||!seen)h+='<div class="tourcard"><p><b>はじめての方へ</b><br>サンプルの試合を使って、どこを見れば何がわかるかを1分で案内します。</p><button class="btn wide" data-act="tour-new">画面の見方を見る</button></div>';}
   else{
     h+='<ul class="games">';
     ids.forEach(id=>{
@@ -1655,6 +1671,7 @@ function renderSheet(){
       (tbOk?'<div class="row"><button class="btn" data-act="tb" data-v="2">タイブレーク（無死一・二塁）</button><button class="btn" data-act="tb" data-v="3">タイブレーク（無死満塁）</button></div>':'')+
       '<button class="btn" data-act="mode-flip">'+(quickMode(games[ui.gid])?'1球ごとの入力にする':'打席の結果だけの入力にする')+'</button>'+
       '<button class="btn" data-act="gset">⚙ 試合の設定（チーム名・回数・日付）</button>'+
+      '<button class="btn" data-act="tour">画面の見方（はじめての方へ）</button>'+
       (ui.local?'<button class="btn" data-act="share">記録係を交代する・途中経過を送る</button>':'')+
       '<div class="row sep"><button class="btn" data-act="sheet-close">閉じる</button><button class="btn danger" data-act="end">試合を終了する</button></div>';
   }else if(ui.sheet==='sample'){
@@ -1834,6 +1851,8 @@ const acts={
   tb(el){closeSheet();pushEv({t:'tb',n:+el.dataset.v});},
   'more-redo'(){closeSheet();redo();},
   sample(){openSheet('sample');},
+  tour(){tourStart();},
+  'tour-new'(){makeSample(false);ui.tab='score';render();window.scrollTo(0,0);tourStart();},
   'sample-go'(el){closeSheet();makeSample(el.dataset.v==='1');render();window.scrollTo(0,0);},
   edit(el){if(!ui.canWrite)return;const g=games[ui.gid],ei=+el.dataset.ei,e=g&&g.ev&&g.ev[ei];if(!e||e.t==='end')return;
     const pre=replay(Object.assign({},g,{ev:g.ev.slice(0,ei)})),c=JSON.parse(JSON.stringify(e));
@@ -1939,6 +1958,58 @@ document.addEventListener('input',ev=>{
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&ui.sheet){if(ui.sheet==='adv')acts['adv-cancel']();else acts['sheet-close']();}});
 document.addEventListener('focusout',()=>{if(ui.needRender)setTimeout(()=>{if(ui.needRender&&!ui.sheet)softRender();},50);});
 
+
+/* ---------- はじめての人向けツアー：どこを見れば何がわかるか ---------- */
+const TOUR=[
+ {tab:'score',el:()=>$('.mini'),t:'点数',b:'両チームの点数です。左が先攻、右が後攻。いま攻撃しているチームの名前に色がつきます。'},
+ {tab:'score',el:()=>$('.tabs'),t:'4つの画面',b:'「記録」で入力、「経過」で打席ごとの記録、「成績」で打撃・投手成績、「打順」で打順と選手交代を見ます。'},
+ {tab:'score',el:()=>$('#field'),t:'グラウンド',b:'白い丸が守っている選手（守備位置）、黒い丸の数字が打者の打順です。ランナーが出ると塁の上に打順の数字が出ます。'},
+ {tab:'score',el:()=>$('.status'),t:'いまの場面',b:'何回の表か裏か、ボール・ストライク・アウトのランプ、打者の名前、投手の名前と球数（その回の球数）がわかります。'},
+ {tab:'score',el:()=>$('.lastrow'),t:'直前の記録',b:'いま入れた記録が出ます。間違えたら「直す」。右はしの「保存済み」は、この端末に保存できている印です。'},
+ {tab:'score',el:()=>[...document.querySelectorAll('.dock .pad,.dock .qpad')],t:'入力ボタン',b:'1球ごとに押します。よく使うボタンほど下にあります。「その他」から、打席の結果だけを入れる簡単な入力にも切りかえられます。'},
+ {tab:'log',el:()=>$('.log'),t:'経過',b:'打席ごとの結果と、走者の動き、点が入った場面が新しい順に並びます。記録をタップすると、あとから訂正できます。'},
+ {tab:'stats',el:()=>$('.board'),t:'スコアボード',b:'回ごとの点数と、計（合計点）・安（安打）・失（失策）です。'},
+ {tab:'stats',el:()=>{const h=[...document.querySelectorAll('.rv h2')].find(x=>x.textContent==='打撃成績');return h?[h,h.nextElementSibling]:null;},t:'打撃成績',b:'選手ごとの打席の結果と、打数・安打・打点などです。下に、投手成績や打球の方向も続きます。上のチーム名で相手チームに切りかえられます。'},
+ {tab:'stats',el:()=>$('.row [data-act="img"]')&&$('.row [data-act="img"]').parentElement,t:'成績を残す・送る',b:'「画像で保存」でLINEなどに送れる1枚の画像に、「HTMLで保存」で、あとから読み込み直せるファイルにします。'},
+ {tab:'lineup',el:()=>$('ol.lu'),t:'打順',b:'背番号・名前・守備位置です。試合前はここで打順を入れ、試合中は代打・守備交代・投手交代をここで入れます。'},
+ {tab:'score',el:()=>null,t:'見方は以上です',b:'あとは試合一覧の「新しい試合を始める」から始めてください。詳しい入れ方は、トップ画面の「使い方を見る」にあります。このサンプル試合は自由にさわって大丈夫です（一覧から削除できます）。'}
+];
+function tourStart(){if(!ui.gid)return;ui.tour=0;closeSheet();tourShow();}
+function tourEnd(){ui.tour=null;const o=$('#tour');if(o)o.remove();try{localStorage.setItem('tapscore-tour-seen','1');}catch(e){}
+  if(ui.tab!=='score'){ui.tab='score';render();}window.scrollTo(0,0);}
+function tourShow(){
+  const st=TOUR[ui.tour];if(!st)return tourEnd();
+  if(ui.tab!==st.tab){ui.tab=st.tab;ui.mode='idle';ui.pend=null;ui.luDraft=null;ui.luFrom='';ui.luFix=false;render();window.scrollTo(0,0);}
+  let o=$('#tour');
+  if(!o){o=document.createElement('div');o.id='tour';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');o.setAttribute('aria-label','画面の見方');
+    o.innerHTML='<div class="tmask"></div><div class="tspot"></div><div class="tcard"></div>';document.body.appendChild(o);}
+  const last=ui.tour===TOUR.length-1;
+  o.querySelector('.tcard').innerHTML='<span class="tn">'+(ui.tour+1)+' / '+TOUR.length+'</span><h3>'+esc(st.t)+'</h3><p>'+esc(st.b)+'</p>'+
+    '<div class="tbar">'+(last?'':'<button class="link" data-tour="end">終わる</button>')+(ui.tour?'<button class="btn" data-tour="prev">戻る</button>':'')+
+    '<button class="btn primary" data-tour="next">'+(last?'閉じる':'次へ')+'</button></div>';
+  // 対象が見えるところまでスクロールしてから、明るく抜く
+  let els=st.el();if(els&&!Array.isArray(els))els=[els];els=(els||[]).filter(Boolean);
+  if(els.length){const r0=els[0].getBoundingClientRect();if(r0.top<8||r0.top>innerHeight*0.45)window.scrollBy(0,r0.top-(st.tab==='score'?8:72));}
+  requestAnimationFrame(()=>tourPlace(els));
+  const nb=o.querySelector('[data-tour="next"]');if(nb)nb.focus({preventScroll:true});
+}
+function tourPlace(els){
+  const o=$('#tour');if(!o)return;const sp=o.querySelector('.tspot'),cd=o.querySelector('.tcard'),H=innerHeight,ch=cd.offsetHeight+16;
+  if(!els||!els.length){sp.style.cssText='left:50%;top:40%;width:0;height:0';cd.style.top=Math.max(16,(H-ch)/2)+'px';cd.style.bottom='';return;}
+  let L=1e9,T=1e9,R=-1e9,B=-1e9;els.forEach(e=>{const r=e.getBoundingClientRect();L=Math.min(L,r.left);T=Math.min(T,r.top);R=Math.max(R,r.right);B=Math.max(B,r.bottom);});
+  L-=6;T-=6;R+=6;B+=6;T=Math.max(T,4);
+  let top;
+  if(H-B>=ch)top=B+10;            // 下に出す
+  else if(T>=ch)top=T-ch+6;       // 上に出す
+  else{B=Math.min(B,H-ch-6);top=B+10;} // 長いもの（経過など）は見えている部分だけ抜いて、下に出す
+  sp.style.cssText='left:'+L+'px;top:'+T+'px;width:'+Math.max(0,R-L)+'px;height:'+Math.max(0,B-T)+'px';
+  cd.style.top=top+'px';cd.style.bottom='';
+}
+document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('[data-tour]');if(!b)return;ev.stopPropagation();ev.preventDefault();
+  const k=b.dataset.tour;if(k==='end')return tourEnd();ui.tour+=k==='prev'?-1:1;if(ui.tour>=TOUR.length)return tourEnd();tourShow();},true);
+addEventListener('resize',()=>{if(ui.tour!=null)tourShow();});
+document.addEventListener('keydown',ev=>{if(ui.tour==null)return;if(ev.key==='Escape'){ev.stopImmediatePropagation();tourEnd();}
+  else if(ev.key==='ArrowRight'){ui.tour++;ui.tour<TOUR.length?tourShow():tourEnd();}else if(ev.key==='ArrowLeft'&&ui.tour>0){ui.tour--;tourShow();}},true);
 /* ---------- field pointer handling ---------- */
 function svgPt(svg,ev){
   const m=svg.getScreenCTM();if(!m)return {x:150,y:140};
