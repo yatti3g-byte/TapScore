@@ -195,6 +195,7 @@ h2{font-family:var(--font-display);font-size:17px;margin:8px 0 0;font-weight:800
 .lu li,.luhead{display:grid;grid-template-columns:24px 52px 1fr 92px;gap:6px;align-items:center}
 .luhead{font-size:12px;color:var(--muted);margin-bottom:-4px}
 .lu input[data-lu="no"]{text-align:center;padding:10px 4px}
+.lu input.dup{border-color:var(--hit);background:#fdecea}
 h4.lh{margin:0;font-size:13px;color:var(--muted)}
 .rtab input{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px;min-height:40px;color:var(--ink);font-size:16px}
 .rtab td{padding:4px}.rtab td:first-child{width:64px}.rtab td:last-child{width:40px}
@@ -1476,6 +1477,18 @@ function prevLineup(g,t,rt){
       const k=(pg.date||'')+'|'+String(pg.created||0).padStart(15,'0');if(!best||k>best.k)best={k,g:pg,x};}}
   return best;
 }
+// 名簿の候補（まだ打順に入っていない選手）。入力のたびに入れ直す
+function luChips(d,rt){const tr=rTeam(rt);if(!tr)return '';const used=new Set(d.rows.map(r=>String(r.n||'').trim()));
+  const left=tr.players.filter(p=>p.name&&!used.has(p.name));if(!left.length)return '';
+  const at=d.rows.findIndex(r=>!String(r.n||'').trim());
+  return '<h4 class="lh">名簿から入れる（押すと'+((at<0?d.rows.length:at)+1)+'番に入ります。背番号を打っても入ります）</h4><div class="chips">'+left.map(p=>'<button class="chip" data-act="lu-pick" data-v="'+esc(p.name)+'">'+(digits(p.number)?'<b>'+digits(p.number)+'</b> ':'')+esc(p.name)+'</button>').join('')+'</div>';}
+// 同じ背番号・同じ名前が2人いたら、その場で赤くする
+function luMarks(){const d=ui.luDraft;if(!d||ui.tab!=='lineup')return;const g=games[ui.gid];
+  const box=$('#lu-chips');if(box)box.innerHTML=luChips(d,((g&&g.rt)||[])[d.t]||'');
+  const cnt=(k,f)=>{const m={};d.rows.forEach(r=>{const v=f(r);if(v)m[v]=(m[v]||0)+1;});return m;};
+  const cn=cnt('n',r=>String(r.n||'').trim()),cno=cnt('no',r=>digits(r.no));
+  d.rows.forEach((r,i)=>{const a=$('#lu-n-'+i),b=$('#lu-no-'+i);
+    if(a)a.classList.toggle('dup',cn[String(r.n||'').trim()]>1);if(b)b.classList.toggle('dup',cno[digits(r.no)]>1);});}
 function draft(g,S){
   const t=ui.luTeam;
   const fix=!!ui.luFix&&(g.ev||[]).length>0;
@@ -1498,6 +1511,7 @@ function lineupTab(g,S){
   if(teamCount())h+='<h4 class="lh">名簿</h4><div class="chips">'+[''].concat(allTeams().map(x=>x.t.id)).map(id=>'<button class="chip'+(rt===id?' on':'')+'" data-act="lu-rt" data-v="'+esc(id)+'">'+(id?esc(teamLabel(id)):'使わない')+'</button>').join('')+'</div>';
   if(!started&&!d.fix&&d.rows.every(r=>!String(r.n||'').trim())){const pv=prevLineup(g,t,rt);
     if(pv)h+='<button class="btn wide" data-act="lu-prev">前回の打順を入れる（'+esc(fmtDate(pv.g.date))+' 対 '+esc(pv.g.teams[1-pv.x]||'')+'）</button>';}
+  h+='<div id="lu-chips">'+luChips(d,rt)+'</div>';
   h+=rosterList('dl-lu',rt)+'<div class="luhead"><span></span><span>背番号</span><span>名前</span><span>守備</span></div><ol class="lu">';
   d.rows.forEach((r,i)=>{
     h+='<li><span class="ord">'+(i+1)+'</span><input id="lu-no-'+i+'" data-lu="no" data-i="'+i+'" inputmode="numeric" maxlength="3" aria-label="'+(i+1)+'番の背番号" value="'+esc(r.no||'')+'"><input id="lu-n-'+i+'" data-lu="n" data-i="'+i+'" list="dl-lu" maxlength="20" aria-label="'+(i+1)+'番の名前" placeholder="'+(i+1)+'番の名前" value="'+esc(r.n)+'">'+
@@ -1506,9 +1520,6 @@ function lineupTab(g,S){
     h+='</select></li>';
   });
   h+='</ol>';
-  {const tr=rTeam(rt),used=new Set(d.rows.map(r=>String(r.n||'').trim()));
-   const left=tr?tr.players.filter(p=>p.name&&!used.has(p.name)):[];
-   if(left.length)h+='<h4 class="lh">名簿から打順に入れる（押した順に'+(d.rows.findIndex(r=>!String(r.n||'').trim())+1||d.rows.length+1)+'番から入ります）</h4><div class="chips">'+left.map(p=>'<button class="chip" data-act="lu-pick" data-v="'+esc(p.name)+'">'+(digits(p.number)?'<b>'+digits(p.number)+'</b> ':'')+esc(p.name)+'</button>').join('')+'</div>';}
   const dh=!d.rows.some(r=>r.p===1),canDel=d.rows.length>1;
   if(dh)h+='<label class="fld" for="lu-sp"><span>'+(d.fix?'先発投手（打順に入らない・DHのとき）':'投手（打順に入らない・DHのとき）')+'</span><input id="lu-sp" data-lu="sp" list="dl-lu" maxlength="20" placeholder="投手の名前" value="'+esc(d.sp)+'"></label>';
   h+='<div class="row"><button class="btn" data-act="lu-add"'+(d.rows.length>=25?' disabled':'')+'>打者を追加（'+(d.rows.length+1)+'番）</button><button class="btn" data-act="lu-del"'+(canDel?'':' disabled')+'>最後の打者を消す</button></div>';
@@ -1536,7 +1547,7 @@ function render(){
   }
   m.innerHTML=ui.gid?viewGame():ui.view==='roster'?viewRoster():viewHome();
   m.className=(ui.gid&&ui.tab==='score')?'rec':'';paintSave();
-  bindField();fitAll();keepAwake();
+  bindField();fitAll();keepAwake();luMarks();
 }
 function softRender(){
   const a=document.activeElement;
@@ -1649,13 +1660,6 @@ function renderSheet(){
   }else if(ui.sheet==='sample'){
     h+='<h3>サンプル試合を入れる</h3><p class="sum">架空の2チームの試合を自動で作ります。投手交代や盗塁も入っているので、成績や訂正をすぐ試せます。不要になったら、試合一覧の「削除」で消せます。</p>'+
       '<button class="btn primary" data-act="sample-go" data-v="0">試合途中（5回表から続きを入力）</button><button class="btn" data-act="sample-go" data-v="1">試合終了（勝敗・セーブつき）</button><button class="btn" data-act="sheet-close">やめる</button>';
-  }else if(ui.sheet==='pc'){
-    const t=ui.pc.tm,row=S.pst[t].get(S.pit[t]);
-    h+='<h3>投手交代（'+esc(S.teams[t])+'）</h3><p class="sum">いまの投手：'+esc(S.pit[t])+'　'+(row?row.np:0)+'球</p><h4>守っている選手が投手になる（押すと交代）</h4><div class="chips">'+
-      S.lu[t].map((p,i)=>p.p===1?'':'<button class="chip'+(ui.pc.i===i?' on':'')+'" data-act="pc-i" data-v="'+i+'">'+(i+1)+'番 '+esc(pname(p,i))+(POS[p.p]?'（'+POS[p.p]+'）':'')+'</button>').join('')+'</div>'+
-      rosterList('dl-pc',((games[ui.gid]||{}).rt||[])[t]||'')+'<label class="fld" for="pc-name"><span>または、新しく入る投手の名前（名簿から選べます）</span><input id="pc-name" list="dl-pc" maxlength="20"></label>'+
-      '<p class="sum">交代後の投球数や失点は、新しい投手に分けて集計します。塁に残した走者が生還したときは、前の投手の失点になります。</p>'+
-      '<div class="row"><button class="btn" data-act="sheet-close">やめる</button><button class="btn primary" data-act="pc-ok">交代する</button></div>';
   }else if(ui.sheet==='edit'){
     const d=ui.ed,e=d.e,P=d.pre,bt=P.half;
     h+='<h3>記録を訂正</h3>';
@@ -1829,14 +1833,8 @@ const acts={
   'mode-flip'(){const g=games[ui.gid];if(!g||!ui.canWrite)return;g.mode=quickMode(g)?'pitch':'pa';setPrefs({mode:g.mode});g.upd=Date.now();closeSheet();save(ui.gid);toast(quickMode(g)?'打席の結果だけで入力します':'1球ごとに入力します');render();},
   tb(el){closeSheet();pushEv({t:'tb',n:+el.dataset.v});},
   'more-redo'(){closeSheet();redo();},
-  'more-lineup'(){closeSheet();acts.tab({dataset:{tab:'lineup'}});},
   sample(){openSheet('sample');},
   'sample-go'(el){closeSheet();makeSample(el.dataset.v==='1');render();window.scrollTo(0,0);},
-  pc(){if(!canInput())return;ui.pc={tm:1-ui.S.half,i:null};openSheet('pc');},
-  'pc-i'(el){const c=ui.pc;closeSheet();pushEv({t:'pc',tm:c.tm,i:+el.dataset.v});},
-  'pc-ok'(){const c=ui.pc;if(c.i!=null){closeSheet();pushEv({t:'pc',tm:c.tm,i:c.i});return;}
-    const n=$('#pc-name').value.trim().slice(0,20);if(!n){toast('選手を選ぶか、名前を入れてください');return;}
-    closeSheet();pushEv({t:'pc',tm:c.tm,n});},
   edit(el){if(!ui.canWrite)return;const g=games[ui.gid],ei=+el.dataset.ei,e=g&&g.ev&&g.ev[ei];if(!e||e.t==='end')return;
     const pre=replay(Object.assign({},g,{ev:g.ev.slice(0,ei)})),c=JSON.parse(JSON.stringify(e));
     if(c.t==='bip'){c.b=c.b|0;c.r=c.r||{};[1,2,3].forEach(k=>{if(pre.bases[k]){if(c.r[k]==null)c.r[k]=k;}else delete c.r[k];});}
@@ -1893,7 +1891,7 @@ const acts={
   'lu-rt'(el){const g=games[ui.gid];if(!g||!ui.canWrite)return;g.rt=[(g.rt||[])[0]||'',(g.rt||[])[1]||''];g.rt[ui.luTeam]=el.dataset.v;g.upd=Date.now();save(ui.gid);render();},
   'lu-pick'(el){const d=ui.luDraft,g=games[ui.gid];if(!d||!g)return;const rt=(g.rt||[])[d.t]||'',pl=rosterFind(rt,el.dataset.v);if(!pl)return;
     let i=d.rows.findIndex(r=>!String(r.n||'').trim());if(i<0){if(d.rows.length>=25)return;d.rows.push({n:'',p:0,no:''});i=d.rows.length-1;}
-    d.rows[i].n=pl.name;d.rows[i].no=digits(pl.number);render();},
+    d.rows[i].n=pl.name;d.rows[i].no=digits(pl.number);d.rows[i].autoN=d.rows[i].autoNo=true;render();},
   'lu-prev'(){const d=ui.luDraft,g=games[ui.gid];if(!d||!g)return;const pv=prevLineup(g,d.t,(g.rt||[])[d.t]||'');if(!pv)return;
     d.rows=pv.g.lu[pv.x].map(p=>({n:String(p.n||''),p:p.p|0,no:String(p.no||'')}));
     if(!d.rows.some(r=>r.p===1))d.sp=String((pv.g.sp&&pv.g.sp[pv.x])||'');
@@ -1926,9 +1924,17 @@ document.addEventListener('input',ev=>{
   if(el.dataset.lu==='team')ui.luDraft.name=el.value;
   else if(el.dataset.lu==='sp')ui.luDraft.sp=el.value;
   else{const r=ui.luDraft.rows[+el.dataset.i];if(!r)return;const i=+el.dataset.i,rt=((games[ui.gid]||{}).rt||[])[ui.luDraft.t]||'';
-    if(el.dataset.lu==='n'){r.n=el.value;const pl=rosterFind(rt,el.value);if(pl){if(pl.name!==el.value){r.n=pl.name;el.value=pl.name;}if(digits(pl.number)){r.no=digits(pl.number);const ne=$('#lu-no-'+i);if(ne)ne.value=r.no;}}}
-    else if(el.dataset.lu==='no'){r.no=digits(el.value);if(!String(r.n||'').trim()){const pl=rosterFind(rt,'',r.no);if(pl){r.n=pl.name;const ne=$('#lu-n-'+i);if(ne)ne.value=pl.name;}}}
+    // 名簿から自動で入れた値（autoN：背番号から入れた名前、autoNo：名前から入れた背番号）は、打ち直すたびに入れ直す。
+    // 自分で打った名前・背番号は上書きしない。2桁の背番号も1桁目で決めつけない。
+    if(el.dataset.lu==='n'){r.n=el.value;r.autoN=false;const pl=rosterFind(rt,el.value),ne=$('#lu-no-'+i);
+      if(pl){if(pl.name!==el.value){r.n=pl.name;el.value=pl.name;}if(digits(pl.number)&&(!r.no||r.autoNo||r.no===digits(pl.number))){r.no=digits(pl.number);r.autoNo=true;if(ne)ne.value=r.no;}}
+      else if(r.autoNo){r.no='';r.autoNo=false;if(ne)ne.value='';}}
+    else if(el.dataset.lu==='no'){r.no=digits(el.value);r.autoNo=false;
+      if(!String(r.n||'').trim()||r.autoN){const pl=r.no?rosterFind(rt,'',r.no):null,ne=$('#lu-n-'+i);
+        if(pl){r.n=pl.name;r.autoN=true;}else if(r.autoN){r.n='';r.autoN=false;}
+        if(ne)ne.value=r.n;}}
     else{const old=r.p,v=+el.value;r.p=v;const o=v?ui.luDraft.rows.find(x=>x!==r&&x.p===v):null;if(o){o.p=old;toast((o.n||'その選手')+'は'+(POS[old]?POS[old]:'守備なし')+'へ');}render();}}
+    luMarks();
 });
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&ui.sheet){if(ui.sheet==='adv')acts['adv-cancel']();else acts['sheet-close']();}});
 document.addEventListener('focusout',()=>{if(ui.needRender)setTimeout(()=>{if(ui.needRender&&!ui.sheet)softRender();},50);});
