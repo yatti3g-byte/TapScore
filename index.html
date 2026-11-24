@@ -387,6 +387,8 @@ h2,.rv h2{font-weight:700;font-size:16px}
 #toast{background:var(--ink);color:var(--paper)}
 /* ---------- はじめての人向けツアー（画面の見方） ---------- */
 #tour{position:fixed;inset:0;z-index:200}
+#tour.do{pointer-events:none}#tour.do .tcard{pointer-events:auto}#tour.do .tspot{outline-color:#ffd23f;animation:tpulse 1.2s ease-in-out infinite}
+@keyframes tpulse{50%{outline-offset:4px}}
 #tour .tmask{position:absolute;inset:0}
 #tour .tspot{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,28,22,.62);outline:3px solid #fff;transition:all .2s ease;pointer-events:none}
 #tour .tcard{position:fixed;left:12px;right:12px;max-width:520px;margin:0 auto;background:#2f7d4f;color:#fff;border-radius:16px;padding:14px 16px 12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -433,7 +435,6 @@ h2,.rv h2{font-weight:700;font-size:16px}
 .consult{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 14px 10px;margin:14px 0}
 .consult h2{margin-top:12px}
 .ck{display:flex;gap:8px;align-items:center;font-size:15px;margin:8px 0}.ck input{width:20px;height:20px;accent-color:var(--accent)}
-.ailinks{font-size:14px;color:var(--muted);margin:6px 0}.ailinks a{color:var(--accent);font-weight:700;margin-right:6px}
 .cqprev summary{cursor:pointer;color:var(--accent);font-weight:700;font-size:14px;padding:6px 0}
 .cqprev pre{white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:320px;overflow:auto;user-select:text;-webkit-user-select:text}
 
@@ -786,7 +787,7 @@ function paintSave(){
 }
 function loadLocal(){
   let raw=null;try{raw=localStorage.getItem(LS);}catch(e){ui.noStore=true;}
-  // メインの保存データがないときも、自動の控え（.bak）に試合が残っていればそこから戻す（壊れていたときと同じ扱い）
+  // メインの保存データがないときも、自動保存の予備（.bak）に試合が残っていればそこから戻す（壊れていたときと同じ扱い）
   if(!raw){games={};try{const b=JSON.parse(localStorage.getItem(BAK)||'null');
     if(b&&b.games&&typeof b.games==='object'&&!Array.isArray(b.games)&&Object.keys(b.games).length){games=b.games;ui.recovered=b.at||1;ui.recoveredWhy='missing';
       try{localStorage.setItem(LS,JSON.stringify(games));}catch(_){}}}catch(_){}
@@ -845,11 +846,21 @@ async function saveBackup(){
   const r=await saveFile(blob,name);if(r){markBackup();toast('記録のファイルを保存しました');return true;}if(r===false)toast('保存できませんでした');return false;}
 // 最後のバックアップより後に、記録が変わった試合があるか
 function unbacked(){const t=lastBackup();return Object.keys(games).filter(id=>{const g=games[id];return g&&!g.sample&&(g.ev||[]).length&&(g.upd||0)>t;}).length;}
+// 「ファイルを開く」：控えファイル（JSON）・試合のファイル（HTML）・名簿（CSV）を中身で見分ける。使う人は種類を気にしなくてよい
+async function openAnyFile(f){if(!f)return;let t='';try{t=await f.text();}catch(e){toast('ファイルを読めませんでした');return;}
+  const head=t.slice(0,2000).trim();
+  if(/^[{[]/.test(head)){let d=null;try{d=JSON.parse(t);}catch(e){}
+    if(d&&d.app==='TapScore'&&d.games)return restoreBackup(f);
+    if(d&&(d.clubs||(d.app==='TapScore'&&d.roster))){ui.view='roster';ui.rd=null;render();return readRosterFile(f);}
+    toast('TapScoreのファイルではないようです');return;}
+  if(/<html|<!doctype/i.test(head))return importReaderFile(f);
+  // それ以外は名簿（CSV）として
+  ui.gid=null;ui.view='roster';ui.rd=null;render();readRosterFile(f);}
 function backupNote(){if(!ui.local)return '';const t=lastBackup(),n=unbacked();
   const d=t?Math.floor((Date.now()-t)/864e5):-1;
-  if(!n&&t)return '<p class="bknote ok">最後のバックアップ：'+(d<=0?'今日':d+'日前')+'（そのあとの変更はありません）</p>';
+  if(!n&&t)return '<p class="bknote ok">控えファイル：'+(d<=0?'今日':d+'日前')+'に作成（そのあとの変更はありません）</p>';
   if(!n)return '';
-  return '<div class="bknote warn"><b>'+(t?'最後のバックアップ（'+(d<=0?'今日':d+'日前')+'）のあと、'+n+'試合の記録が変わっています。':'まだ記録をファイルで残していません（'+n+'試合）。')+'</b>記録はこのスマホの中にしかないので、ファイルで残しておきましょう。<button class="btn primary" data-act="backup">記録をファイルで保存・送る</button></div>';}
+  return '<div class="bknote warn"><b>'+(t?'控えファイルを作った日（'+(d<=0?'今日':d+'日前')+'）のあと、'+n+'試合の記録が変わっています。':'まだ控えファイルがありません（'+n+'試合）。')+'</b>記録はこのスマホに自動で保存されています。スマホをなくしたときのために、控えファイルを作っておきましょう。<button class="btn primary" data-act="backup">控えファイルを作る</button></div>';}
 function backupBlob(){return new Blob([JSON.stringify({app:'TapScore',kind:'backup',v:2,at:Date.now(),games,roster:{v:1,clubs:clubsOut(CLUBS)}},null,1)],{type:'application/json'});}
 function cleanGame(g){
   if(!g||!Array.isArray(g.ev)||g.ev.length>5000||!Array.isArray(g.teams))return null;
@@ -861,7 +872,7 @@ function restoreBackup(file){
   if(!file)return;const fr=new FileReader();fr.onerror=()=>toast('ファイルを読めませんでした');
   fr.onload=()=>{
     let d=null;try{d=JSON.parse(String(fr.result||''));}catch(e){}
-    if(!d||d.app!=='TapScore'||!d.games||typeof d.games!=='object'){toast('TapScoreのバックアップファイルではないようです');return;}
+    if(!d||d.app!=='TapScore'||!d.games||typeof d.games!=='object'){toast('TapScoreの控えファイルではないようです');return;}
     // 試合：端末にない試合は追加。両方にある試合は、更新時刻が新しい方を残す（古いバックアップで新しい記録を上書きしない）
     const next=Object.assign({},games);let add=0,upd=0,keep=0,fork=0;
     Object.keys(d.games).forEach(id=>{if(!/^[\w-]{1,40}$/.test(id))return;const c=cleanGame(d.games[id]);if(!c)return;
@@ -880,7 +891,7 @@ function restoreBackup(file){
       const gt=JSON.stringify(next);let ok=false;
       try{localStorage.setItem(LS,gt);if(localStorage.getItem(LS)!==gt)throw 0;
         if(m.added){const rt=JSON.stringify({v:1,clubs:clubsOut(m.clubs)});localStorage.setItem(CKEY,rt);if(localStorage.getItem(CKEY)!==rt)throw 0;}ok=true;}catch(e){}
-      if(!ok){try{if(og!=null)localStorage.setItem(LS,og);if(or!=null)localStorage.setItem(CKEY,or);}catch(e){}toast('バックアップを戻せませんでした（ブラウザの空き容量など）。何も変えていません');return;}
+      if(!ok){try{if(og!=null)localStorage.setItem(LS,og);if(or!=null)localStorage.setItem(CKEY,or);}catch(e){}toast('控えファイルを開けませんでした（ブラウザの空き容量など）。何も変えていません');return;}
       games=next;if(m.added){CLUBS=normClubs({clubs:clubsOut(m.clubs)});ROSTER_V++;}setSave('ok');}
     else{if(m.added&&!saveRoster(m.clubs)){toast('名簿を戻せませんでした。何も変えていません');return;}
       Object.keys(next).forEach(id=>{if(next[id]!==games[id]){games[id]=next[id];save(id);}});}
@@ -1456,9 +1467,9 @@ function createGame(away,home,date,name,inn,rt,mode,tbd){
 function banners(){
   let h='';
   if(ui.save==='error'&&!ui.local&&ui.unsavedGid)h+='<div class="banner err"><b>入れた記録を保存できていません（閲覧のみの共有設定です）。</b>画面を閉じると消えるので、試合をHTMLで保存して残してください。共有した人に「編集できる」設定を頼むと、続けて記録できます。<div class="row"><button class="btn" data-act="save-unsaved">この試合をHTMLで保存</button></div></div>';
-  else if(ui.save==='error')h+='<div class="banner err"><b>記録をこの端末に保存できていません。</b>ブラウザの空き容量不足やプライベートモードが原因のことがあります。自動でやり直していますが、画面を閉じる前に「記録をファイルで保存・送る」で控えを残してください。<div class="row"><button class="btn" data-act="backup">記録をファイルで保存・送る</button><button class="btn" data-act="save-retry">もう一度保存</button></div></div>';
-  if(ui.recovered>0)h+='<p class="banner">保存データが'+(ui.recoveredWhy==='missing'?'見つからなかった':'壊れていた')+'ため、自動の控え（'+new Date(ui.recovered).toLocaleString('ja-JP')+'）から戻しました。それより後の記録が足りないときは、記録のファイルがあれば「記録のファイルを読み込む」で戻してください。</p>';
-  else if(ui.recovered<0)h+='<p class="banner">保存データを読み込めませんでした。記録のファイルがあれば、トップ画面の「記録のファイルを読み込む」で戻せます。</p>';
+  else if(ui.save==='error')h+='<div class="banner err"><b>記録をこの端末に保存できていません。</b>ブラウザの空き容量不足やプライベートモードが原因のことがあります。自動でやり直していますが、画面を閉じる前に「控えファイルを作る」で控えを残してください。<div class="row"><button class="btn" data-act="backup">控えファイルを作る</button><button class="btn" data-act="save-retry">もう一度保存</button></div></div>';
+  if(ui.recovered>0)h+='<p class="banner">保存データが'+(ui.recoveredWhy==='missing'?'見つからなかった':'壊れていた')+'ため、自動保存の予備（'+new Date(ui.recovered).toLocaleString('ja-JP')+'）から戻しました。それより後の記録が足りないときは、控えファイルがあれば「ファイルを開く」で戻してください。</p>';
+  else if(ui.recovered<0)h+='<p class="banner">保存データを読み込めませんでした。記録のファイルがあれば、トップ画面の「ファイルを開く」で控えファイルを開くと戻せます。</p>';
   if(ui.noStore)h+='<p class="banner">このブラウザでは記録を保存できません（プライベートモードなど）。通常のモードで開いてください。</p>';
   if(ui.failed)h+='<p class="banner">共有データを読み込めませんでした。ページを開き直してください。</p>';
   else if(ui.stale)h+='<p class="banner">共有データにまだ接続できていません。表示が古い可能性があります。</p>';
@@ -1498,11 +1509,10 @@ function viewHome(){
   else if(rest.length){const N=10,show=ui.allGames?rest:rest.slice(0,N);
     h+='<div class="ghead"><h2>試合</h2>'+(ui.canWrite?'<button class="link" data-act="del-mode">'+(ui.delMode?'削除を終える':'試合を削除する')+'</button>':'')+'</div><ul class="games'+(ui.delMode?' delmode':'')+'">'+show.map(id=>gameCard(id)).join('')+'</ul>'+(rest.length>N&&!ui.allGames?'<button class="btn wide" data-act="all-games">ほかの試合も見る（あと'+(rest.length-N)+'試合）</button>':'');}
   if(ui.canWrite){
-    h+='<h2>名簿・記録の控え</h2>'+(kn&&!kt.every(x=>x.c.sample)?'<button class="btn wide filebtn" data-act="roster">自チームの名簿<small>'+(CLUBS.filter(c=>!c.sample).length>1?CLUBS.filter(c=>!c.sample).length+'クラブ・':'')+kn+'人</small></button>':'')+
-      (ui.local?'<div class="row"><button class="btn filebtn" data-act="backup">記録をファイルで保存・送る<small>全試合と名簿（控え）</small></button><label class="btn filebtn" for="bkin">記録のファイルを読み込む<small>戻す・ほかの人の記録をまとめる</small></label><input id="bkin" type="file" accept=".json,application/json" hidden></div>':'')+
+    h+='<h2>名簿と控え</h2>'+(kn&&!kt.every(x=>x.c.sample)?'<button class="btn wide filebtn" data-act="roster">自チームの名簿<small>'+(CLUBS.filter(c=>!c.sample).length>1?CLUBS.filter(c=>!c.sample).length+'クラブ・':'')+kn+'人</small></button>':'')+
+      (ui.local?'<div class="row"><button class="btn filebtn" data-act="backup">控えファイルを作る<small>全試合と名簿を1つのファイルに</small></button><label class="btn filebtn" for="fin">ファイルを開く<small>控えファイル・送られてきた試合・名簿</small></label><input id="fin" type="file" accept=".json,.html,.htm,.csv,.txt,application/json,text/html,text/csv" hidden></div>':'')+
       '<details class="more home"><summary>そのほか</summary>'+
-        '<label class="btn wide filebtn" for="imp">試合のファイルを開く<small>「HTMLで保存」したファイルを読み込んで直す</small></label><input id="imp" type="file" accept=".html,.htm,text/html" hidden>'+
-        '<button class="btn wide" data-act="sample">動作確認用のサンプル試合を入れる</button>'+(sampleCount()?'<button class="link danger" data-act="sample-del">サンプルの試合と名簿を消す</button>':'')+
+        (sampleCount()?'<button class="link danger" data-act="sample-del">サンプルの試合と名簿を消す</button>':'')+
         '<a class="link coffee" href="https://buymeacoffee.com/formnote" target="_blank" rel="noopener">☕ TapScoreを応援する（Buy Me a Coffee）</a>'+
       '</details>';}
   h+='<div class="row helprow"><button class="btn" data-act="tours">チュートリアル</button><a class="btn helpl2" href="help.html">使い方・Q&A</a></div>';
@@ -1730,11 +1740,11 @@ function decHTML(S,edit){const dl=decList(S);
   return (dl.length?'<div class="status"><div class="duel" style="border:0;padding:0">'+dl.map(x=>'<div><span class="mark">'+x[0]+'</span>'+esc(x[1])+'</div>').join('')+'</div></div>':'')+note+btn;}
 function statsTab(g,S){
   const M=resultModel(g,S),t=ui.statTeam;
-  const bk=S.ended&&ui.local&&!g.sample&&(g.upd||0)>lastBackup()?'<div class="bknote warn"><b>試合おつかれさまでした。</b>記録はこのスマホの中にしかありません。ファイルで残しておくと、スマホをなくしても戻せます。<button class="btn primary" data-act="backup">記録をファイルで保存・送る</button></div>':'';
+  const bk=S.ended&&ui.local&&!g.sample&&(g.upd||0)>lastBackup()?'<div class="bknote warn"><b>試合おつかれさまでした。</b>記録はこのスマホに自動で保存されています。控えファイルを作っておくと、スマホをなくしても戻せます。<button class="btn primary" data-act="backup">控えファイルを作る</button></div>':'';
   const ai=gameConsultHTML(ui.gid);
   return bk+reviewHTML(g,S)+'<button class="btn wide imgbtn" data-act="img">成績を画像で保存・送る<small>LINEなどで保護者に送れる1枚の画像</small></button>'+(S.ended?ai:'')+
     decHTML(S,ui.canWrite)+seg('stat-team',t,S)+'<div class="rv">'+teamBody(S,M,t,false)+'</div>'+(S.ended?'':ai)+
-    '<button class="link" data-act="save-html">この試合をHTMLで保存（あとで読み込み直して直せるファイル）</button>';
+    '';
 }
 // A saved result page: the same look as the stats tab, both teams on one page, and the game data inside so it can be read back.
 function resultDocHTML(id,g){
@@ -2024,9 +2034,6 @@ function renderSheet(){
       '<p class="sum">上限まであと10球になると残りの球数を、超えると超えた球数を出します。次の試合にも引き継ぎます。同じ日の別の試合で投げた球数は数えません。</p><button class="btn" data-act="sheet-close">閉じる</button>';
   }else if(ui.sheet==='tours'){
     h+='<h3>チュートリアル</h3><p class="sum">サンプルの試合と名簿を使って案内します（ないときは自動で入れます。トップ画面の「サンプルの試合と名簿を消す」でまとめて消せます）。</p>'+tourList()+'<button class="btn" data-act="sheet-close">閉じる</button>';
-  }else if(ui.sheet==='formurl'){
-    h+='<h3>フォームノートのURL</h3><label class="fld" for="fu-in"><span>フォームノートを開くページ（この端末に保存）</span><input id="fu-in" type="url" inputmode="url" placeholder="https://" value="'+esc(ui.fu||'')+'"></label>'+
-      '<p class="sum">選手カルテに「フォームノートを開く」が出ます。フォームノートは別のアプリで、データは渡しません。</p><div class="row"><button class="btn" data-act="sheet-close">やめる</button><button class="btn primary" data-act="fu-ok">保存</button></div>';
   }else if(ui.sheet==='dpk'){
     h+='<h3>併殺：どんな打球？</h3><div class="grid3 big">'+[['DP','ゴロ'],['LO','ライナー'],['FO','フライ']].map(x=>'<button class="btn" data-act="dpk" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'+
       '<p class="sum">ライナーやフライで走者が戻れずにアウトになったときは「ライナー」「フライ」。打者の「併殺打」に数えるのはゴロだけです。</p><button class="btn" data-act="sheet-close">やめる</button>';
@@ -2105,11 +2112,7 @@ function renderSheet(){
       '<button class="btn" data-act="mode-flip">'+(quickMode(games[ui.gid])?'1球ごとの入力にする':'打席の結果だけの入力にする')+'</button>'+
       '<button class="btn" data-act="gset">⚙ 試合の設定（チーム名・回数・日付・投球数の上限）</button>'+
       (tbOk?'<div class="row"><button class="btn" data-act="tb" data-v="2">タイブレーク（無死一・二塁）</button><button class="btn" data-act="tb" data-v="3">タイブレーク（無死満塁）</button></div>':'')+
-      '<button class="link" data-act="tours">チュートリアル（画面の見方など）</button>'+
       '<div class="row sep"><button class="btn" data-act="sheet-close">閉じる</button><button class="btn danger" data-act="end">試合を終了する</button></div>';
-  }else if(ui.sheet==='sample'){
-    h+='<h3>サンプル試合を入れる</h3><p class="sum">架空の2チームの試合を自動で作ります。投手交代や盗塁も入っているので、成績や訂正をすぐ試せます。不要になったら、試合一覧の「削除」で消せます。</p>'+
-      '<button class="btn primary" data-act="sample-go" data-v="0">試合途中（5回表から続きを入力）</button><button class="btn" data-act="sample-go" data-v="1">試合終了（勝敗・セーブつき）</button><button class="btn" data-act="sheet-close">やめる</button>';
   }else if(ui.sheet==='edit'){
     const d=ui.ed,e=d.e,P=d.pre,bt=P.half;
     h+='<h3>記録を訂正</h3>';
@@ -2292,11 +2295,8 @@ const acts={
   'mode-flip'(){const g=games[ui.gid];if(!g||!ui.canWrite)return;g.mode=quickMode(g)?'pitch':'pa';setPrefs({mode:g.mode});g.upd=Date.now();closeSheet();save(ui.gid);toast(quickMode(g)?'打席の結果だけで入力します':'1球ごとに入力します');render();},
   tb(el){closeSheet();pushEv({t:'tb',n:+el.dataset.v});},
   'more-redo'(){closeSheet();redo();},
-  sample(){openSheet('sample');},
   demo(){const pid=ensureStory();if(!pid){toast('サンプルを入れられませんでした');return;}endInsert();ui.gid=null;ui.view='players';ui.pv={team:sampleTeam(),pid,edit:false,sq:''};
     ui.cq={scope:'player',key:pid,q:'grow',free:'',feel:'',hide:true};ui.trB='obp';render();window.scrollTo(0,0);tourStart('demo');},
-  'demo-tour'(){window.scrollTo(0,0);tourStart('demo');},
-  'demo-ai'(){const e=$('.consult');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},
   'sample-del'(){const ids=Object.keys(games).filter(id=>games[id]&&games[id].sample);
     ui.conf={msg:'サンプルの試合（'+ids.length+'試合）とサンプルの名簿を消しますか？自分で入れた試合と名簿は消えません。',yes:'サンプルを消す',fn(){
       const L=normClubs({clubs:clubsOut(CLUBS)}).filter(c=>!c.sample);if(!saveRoster(L)){toast('消せませんでした（保存できません）');return;}
@@ -2309,7 +2309,7 @@ const acts={
   plim(){if(!ui.canWrite)return;openSheet('plim');},
   'pl-set'(el){const g=games[ui.gid];if(!g)return;const v=+el.dataset.v;g.plim=v||undefined;g.upd=Date.now();setPrefs({plim:v});closeSheet();
     toast(save(ui.gid)?(v?'投球数の上限を'+v+'球にしました（次の試合にも引き継ぎます）':'投球数の上限をなしにしました'):'この端末に保存できていません');render();},
-  'tour-go'(el){tourStart(el.dataset.v);},
+  'tour-go'(el){if(el.dataset.v==='demo'){closeSheet();acts.demo();return;}tourStart(el.dataset.v);},
   'sample-go'(el){closeSheet();makeSample(el.dataset.v==='1');render();window.scrollTo(0,0);},
   edit(el){if(!ui.canWrite)return;const g=games[ui.gid],ei=+el.dataset.ei,e=g&&g.ev&&g.ev[ei];if(!e||e.t==='end')return;
     const pre=replay(Object.assign({},g,{ev:g.ev.slice(0,ei)})),c=JSON.parse(JSON.stringify(e));
@@ -2354,9 +2354,6 @@ const acts={
   'p-team'(el){ui.pv.team=el.dataset.v;ui.pv.sq='';render();},
   'p-sq'(el){ui.pv.sq=el.dataset.v;ui.trBi=ui.trPi=null;render();},
   cq(el){const f=$('#cq-free');if(f)ui.cq.free=f.value;ui.cq.q=el.dataset.v;ui.cq.edited=null;ui.cqMsg='';render();if(el.dataset.v==='free'){const t=$('#cq-free');if(t)t.focus();}},
-  async 'cq-copy'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;render();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
-    const ok=await copyText(ui.cqText||'');toast(ok?'コピーしました。AIアプリに貼り付けて送ってください':'コピーできませんでした。「渡す文章を見る」から選んでコピーしてください');
-    if(!ok){const d=$('.cqprev');if(d)d.open=true;}},
   'cq-send'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;if(ui.cqBuild&&ui.cq.edited==null)ui.cqText=ui.cqBuild();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
     const ta=$('#cq-text'),t=ta?ta.value:(ui.cqText||''),cp=copyText(t),say=m=>{ui.cqMsg=m;const e=$('.consult .aimsg');if(e)e.textContent=m;};
     const canSend=!!navigator.share&&!(window.claude&&window.claude.use)&&matchMedia('(pointer:coarse)').matches;
@@ -2365,14 +2362,6 @@ const acts={
     // パソコン：文章が入った状態でChatGPTを開く（長い文章も渡せる「#?q=」の形）
     const w=window.open('https://chatgpt.com/#?q='+encodeURIComponent(t),'_blank');if(w){try{w.opener=null;}catch(e){}}
     cp.then(ok=>say(w?'ChatGPTを開きました。質問文はコピー済みなので、文章が入っていないときは貼り付けてください。':ok?'質問文をコピーしました。AIアプリに貼り付けてください。':'質問文を選んでコピーし、AIアプリに貼り付けてください。'));},
-  'cq-gpt'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;if(ui.cqBuild)ui.cqText=ui.cqBuild();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
-    const t=ui.cqText||'';copyText(t);   // 開いたChatGPTに文章が入らなかったときのために、コピーもしておく
-    // 長い文章でも渡せるように「#?q=」の形で（? だと長い文章が渡らないことがある）
-    const w=window.open('https://chatgpt.com/#?q='+encodeURIComponent(t),'_blank');
-    if(w){try{w.opener=null;}catch(e){}toast('ChatGPTを開きました。文章が入っていないときは、貼り付けてください（コピー済み）');}
-    else toast('ChatGPTを開けませんでした。文章はコピーしたので、ChatGPTに貼り付けてください');},
-  async 'cq-share'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;render();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
-    try{await navigator.share({text:ui.cqText||''});}catch(e){if(e&&e.name!=='AbortError'){const ok=await copyText(ui.cqText||'');toast(ok?'送れなかったので、文章をコピーしました。AIアプリに貼り付けてください':'送れませんでした。「文章をコピー」を使ってください');}}},
   'tr-m'(el){const k=el.dataset.kind==='bat'?'trB':'trP';ui[k]=el.dataset.v;ui[k+'i']=null;render();},
   'tr-pt'(el){const k=el.dataset.kind==='bat'?'trB':'trP';ui[k+'i']=+el.dataset.i;const y=window.scrollY;render();window.scrollTo(0,y);},
   'p-open'(el){ui.cq=null;ui.trBi=ui.trPi=null;ui.pv.pid=el.dataset.pid;ui.pv.edit=false;ui.pv.draft=null;render();window.scrollTo(0,0);},
@@ -2386,8 +2375,6 @@ const acts={
     const now=Date.now();if(q.goal)(q.goalLog=q.goalLog||[]).push({text:q.goal,from:q.gupd||now,to:now});q.goal=v;q.gupd=v?now:0;
     if(!saveRoster(L)){ui.pv.draft=v;toast('保存できませんでした（ブラウザの空き容量など）。書いた内容は残しています');render();return;}   // 失敗：名簿は元のまま、入力は残す
     ui.pv.edit=false;ui.pv.draft=null;toast(v?'課題を保存しました'+(q.goalLog&&q.goalLog.length?'（前の課題は「これまでの課題」に残しました）':''):'課題を終えました（「これまでの課題」に残しました）');render();},
-  'p-formurl'(){ui.fu=prefs().formUrl||'';openSheet('formurl');},
-  'fu-ok'(){const v=($('#fu-in').value||'').trim();if(v&&!/^https?:\/\//i.test(v)){toast('https:// から始まるURLを入れてください');return;}setPrefs({formUrl:v});closeSheet();render();toast(v?'フォームノートのURLを保存しました':'URLを消しました');},
   'k-open'(el){ui.cq=null;ui.ret={gid:ui.gid,tab:ui.tab};ui.gid=null;ui.view='players';const f=findPlayer(el.dataset.pid);ui.pv={team:f?f.t.id:'',pid:el.dataset.pid,edit:false};render();window.scrollTo(0,0);},
   'k-setrt'(){const g=games[ui.gid];const own=g&&CLUBS.length?[0,1].find(t=>allTeams().some(x=>gameName(x.t.id)===(g.teams||[])[t])):undefined;
     ui.luTeam=own!=null?own:0;ui.luDraft=null;ui.luFix=false;ui.tab='lineup';render();window.scrollTo(0,0);toast('自チームの側で、「名簿」のチームを選んでください');},
@@ -2456,7 +2443,7 @@ document.addEventListener('click',ev=>{
   if(a==='pitch'||a==='hbp'||a==='undo'||a==='bip'||a==='qres'||a==='kd'){const now=Date.now();if(now-(ui.tapAt||0)<300)return;ui.tapAt=now;}
   const fn=acts[a];if(fn)fn(el);
 });
-document.addEventListener('change',ev=>{const el=ev.target;if(el&&el.id==='cq-hide'&&ui.cq){ui.cq.hide=el.checked;ui.cq.edited=null;const f=$('#cq-free');if(f)ui.cq.free=f.value;render();return;}if(el&&el.id==='rsin'){const f=el.files&&el.files[0];el.value='';readRosterFile(f);return;}if(el&&el.id==='bkin'){const f=el.files&&el.files[0];el.value='';restoreBackup(f);return;}if(el&&el.id==='imp'){const f=el.files&&el.files[0];el.value='';importReaderFile(f);}});
+document.addEventListener('change',ev=>{const el=ev.target;if(el&&el.id==='cq-hide'&&ui.cq){ui.cq.hide=el.checked;ui.cq.edited=null;const f=$('#cq-free');if(f)ui.cq.free=f.value;render();return;}if(el&&el.id==='rsin'){const f=el.files&&el.files[0];el.value='';readRosterFile(f);return;}if(el&&el.id==='bkin'){const f=el.files&&el.files[0];el.value='';restoreBackup(f);return;}if(el&&el.id==='imp'){const f=el.files&&el.files[0];el.value='';importReaderFile(f);return;}if(el&&el.id==='fin'){const f=el.files&&el.files[0];el.value='';openAnyFile(f);}});
 document.addEventListener('input',ev=>{
   const el=ev.target;
   if(el.dataset&&el.dataset.rs&&ui.rd){const k=el.dataset.rs,R=ui.rd.find(c=>c.id===ui.rdClub);if(!R)return;const t=R.teams.find(x=>x.id===ui.rdTeam);ui.rdDirty=true;
@@ -2562,15 +2549,16 @@ const RUNNERS={'':'走者なし','1':'一塁','2':'二塁','3':'三塁','12':'�
 // その選手の全打席（新しい試合から）
 function playerPAs(pid){const out=[];
   Object.keys(games).forEach(id=>{const LL=gameLines(id);if(!LL)return;
-    LL.filter(sqOK).forEach(L=>L.pas.forEach(a=>{if(a.pid!==pid)return;const k=paCount(a.seq);
+    LL.filter(sqOK).forEach(L=>{const seenI={},tt={};L.pas.forEach(a=>{const lead=!seenI[a.inn];seenI[a.inn]=1;const kk=a.pit+'|'+a.pid;tt[kk]=(tt[kk]||0)+1;if(a.pid!==pid)return;const k=paCount(a.seq);
       const kind=/三振/.test(a.text)?'K':a.hit?'H':/四球|死球/.test(a.text)?'BB':/犠/.test(a.text)?'SAC':/失策|野選/.test(a.text)?'ROE':'OUT';
       out.push({gid:id,date:L.date,opp:L.opp,inn:a.inn,outs:a.o,runners:RUNNERS[a.on]||a.on,risp:/[23]/.test(a.on),seq:a.seq,pitched:L.hasPitch&&a.seq.length>0,
         count:k.b+'-'+k.s,two:k.two,first:k.first,pitches:k.n,result:a.text,kind,rbi:a.rbi,hr:a.res==='HR',xbh:['2B','3B','HR'].indexOf(a.res)>=0,
-        sf:a.res==='SF',swings:(a.seq.match(/[SFX]/g)||[]).length,whiffs:(a.seq.match(/S/g)||[]).length,res:a.res,f:a.f,b:k.b,s:k.s});}));});
+        sf:a.res==='SF',swings:(a.seq.match(/[SFX]/g)||[]).length,whiffs:(a.seq.match(/S/g)||[]).length,res:a.res,f:a.f,b:k.b,s:k.s,on:a.on,lead,tto:a.pit?tt[kk]:0});});});});
   out.sort((x,y)=>String(y.date).localeCompare(String(x.date))||y.inn-x.inn);return out;}
 // 場面別の集計（打席数をかならず添える）
 function splitLine(list){const ab=list.filter(a=>a.kind!=='BB'&&a.kind!=='SAC').length,h=list.filter(a=>a.kind==='H').length;
-  return {打席:list.length,打数:ab,安打:h,打率:ab?(h/ab).toFixed(3).replace(/^0/,''):null,三振:list.filter(a=>a.kind==='K').length,四死球:list.filter(a=>a.kind==='BB').length,長打:list.filter(a=>a.xbh).length,打点:list.reduce((x,a)=>x+a.rbi,0)};}
+  return {打席:list.length,打数:ab,安打:h,打率:ab?(h/ab).toFixed(3).replace(/^0/,''):null,三振:list.filter(a=>a.kind==='K').length,四死球:list.filter(a=>a.kind==='BB').length,長打:list.filter(a=>a.xbh).length,打点:list.reduce((x,a)=>x+a.rbi,0),
+    出塁率:(()=>{const bb=list.filter(a=>a.kind==='BB').length,sf=list.filter(a=>a.sf).length,d=ab+bb+sf;return d?((h+bb)/d).toFixed(3).replace(/^0/,''):null;})()};}
 function playerSplits(pid){const f=findPlayer(pid);if(!f)return null;const A=playerPAs(pid),P=A.filter(a=>a.pitched);
   const gd=f.p.goal&&f.p.gupd?new Date(f.p.gupd):null,gs=gd?gd.getFullYear()+'-'+String(gd.getMonth()+1).padStart(2,'0')+'-'+String(gd.getDate()).padStart(2,'0'):'';
   const gids=[...new Set(A.map(a=>a.gid))],recent=new Set(gids.slice(0,5));
@@ -2592,14 +2580,21 @@ function pitcherData(pid){const games_=[],faced=[];
     const p=L.pit.filter(x=>x.pid===pid);if(!p.length)return;const names=new Set(p.map(x=>x.name)),pi=L.pitIn.filter(x=>x.pid===pid);
     games_.push({date:L.date,opp:L.opp,outs:p.reduce((a,x)=>a+x.outs,0),np:L.hasPitch?p.reduce((a,x)=>a+x.np,0):null,byInn:L.hasPitch?pi.reduce((a,x)=>Object.assign(a,x.byInn),{}):null,
       h:p.reduce((a,x)=>a+x.h,0),bb:p.reduce((a,x)=>a+x.bb,0),k:p.reduce((a,x)=>a+x.k,0),r:p.reduce((a,x)=>a+x.r,0),er:p.reduce((a,x)=>a+x.er,0),mark:p.map(x=>x.mark).join('')});
-    const S=replayRO(games[id]);S.log.filter(e=>e.k==='pa'&&e.half===1-L.t&&names.has(e.pit)).forEach(e=>{const k=paCount((e.seq||[]).join(''));
-      faced.push({gid:id,opp:L.opp,date:L.date,inn:e.inn,b:k.b,first:k.first,n:k.n,text:e.text});});});});
+    const S=replayRO(games[id]),seenI={};let cum=0;S.log.filter(e=>e.k==='pa'&&e.half===1-L.t).forEach(e=>{const lead=!seenI[e.inn];seenI[e.inn]=1;if(!names.has(e.pit))return;
+      const sq=(e.seq||[]).join(''),k=paCount(sq);faced.push({gid:id,opp:L.opp,date:L.date,inn:e.inn,b:k.b,first:k.first,n:k.n,text:e.text,seq:sq,lead,at:cum});cum+=k.n;});});});
   games_.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const P=faced.filter(a=>a.n>0),cnt=f=>faced.filter(f).length;
   const sum={対戦打者:faced.length,四死球:cnt(a=>/四球|死球/.test(a.text)),三振:cnt(a=>/三振/.test(a.text)),投球の記録がある打者:P.length,
     初球ストライク:P.filter(a=>/[CSFX]/.test(a.first)).length,'3ボールまでいった打者':P.filter(a=>a.b>=3||/四球/.test(a.text)).length};
+  if(P.length){const all=P.map(a=>a.seq).join(''),st=(all.match(/[CSFX]/g)||[]).length,np=all.length;
+    sum.ストライク率=np?Math.round(st/np*100)+'%（'+st+'/'+np+'球）':'-';sum['1打者あたりの球数']=(np/P.length).toFixed(1);
+    const two3=P.filter(a=>{let s=0;return String(a.seq).slice(0,3).split('').some(c=>{if(c==='C'||c==='S'||(c==='F'&&s<2))s++;return s>=2;});}).length;sum['3球以内に2ストライクにした打者']=two3;
+    const tw=P.filter(a=>{let s=0;return String(a.seq).split('').some(c=>{if(c==='C'||c==='S'||(c==='F'&&s<2))s++;return s>=2;});});
+    sum['追い込んだ打者']=tw.length+'（三振'+tw.filter(a=>/三振/.test(a.text)).length+'・安打'+tw.filter(a=>/安打|二塁打|三塁打|本塁打/.test(a.text)).length+'・四死球'+tw.filter(a=>/四球|死球/.test(a.text)).length+'）';}
+  const ld=faced.filter(a=>a.lead);if(ld.length)sum['イニングの先頭打者']=ld.length+'人（出塁'+ld.filter(a=>/安打|二塁打|三塁打|本塁打|四球|死球|失策/.test(a.text)).length+'）';
+  const band=[];[[0,30,'1〜30球目'],[30,50,'31〜50球目'],[50,999,'51球目以降']].forEach(([lo,hi,l])=>{const x=P.filter(a=>a.at>=lo&&a.at<hi);if(x.length)band.push(l+'：打者'+x.length+' 出塁'+x.filter(a=>/安打|二塁打|三塁打|本塁打|四球|死球|失策/.test(a.text)).length+' 三振'+x.filter(a=>/三振/.test(a.text)).length);});
   const byInn=[];for(let i=1;i<=12;i++){const x=faced.filter(a=>a.inn===i);if(x.length)byInn.push({回:i,打者:x.length,四死球:x.filter(a=>/四球|死球/.test(a.text)).length,三振:x.filter(a=>/三振/.test(a.text)).length});}
-  return {games:games_,sum,byInn,faced};}
+  return {games:games_,sum,byInn,faced,band};}
 
 /* ---------- 表示だけの画面で使う、試合の再生結果の使い回し ----------
    記録を変える処理は必ず g.ev を新しい配列にするので、配列が同じで設定（回数・チーム・打順など）も同じなら再生結果も同じ。
@@ -2627,7 +2622,20 @@ function crossTabs(list){const L=[],P=list.filter(a=>a.pitched);
     // 追い込まれてからの粘り：2ストライクになってから投げられた球と、そのうちのファウル
     let two=0,after=0,foul=0;P.forEach(a=>{let s=0,on=false;String(a.seq).split('').forEach(c=>{if(on){after++;if(c==='F')foul++;}
       if(c==='C'||c==='S'||(c==='F'&&s<2))s++;if(s>=2&&!on){on=true;two++;}});});
-    if(two)L.push('- 追い込まれてから：'+two+'打席で、2ストライクのあとに'+after+'球（うちファウル'+foul+'球、1打席平均'+(after/two).toFixed(1)+'球）');}
+    if(two)L.push('- 追い込まれてから：'+two+'打席で、2ストライクのあとに'+after+'球（うちファウル'+foul+'球、1打席平均'+(after/two).toFixed(1)+'球）');
+    // カウントの入り方（初球でストライクを取られたか）
+    sl('初球がストライク（見逃し・空振り・ファウル）で0-1から始まった打席',P.filter(a=>/[CSF]/.test(a.first)));sl('初球がボールで1-0から始まった打席',P.filter(a=>a.first==='B'));
+    // 見極め：見送った球のうちストライクだった割合、三振の中身
+    const all=P.map(a=>String(a.seq)).join(''),tb=(all.match(/B/g)||[]).length,tc=(all.match(/C/g)||[]).length,fc=P.filter(a=>a.first==='C').length;
+    if(tb+tc)L.push('- 見送った球'+(tb+tc)+'球のうちストライク（見逃し）'+tc+'球（'+Math.round(tc/(tb+tc)*100)+'%）。初球のストライクを見逃した打席：'+fc+'/'+P.length+'打席');
+    const KK=P.filter(a=>a.kind==='K'),kl=KK.filter(a=>/C$/.test(a.seq)).length,ks=KK.filter(a=>/S$/.test(a.seq)).length;
+    if(KK.length)L.push('- 三振'+KK.length+'の内訳：見逃し三振'+kl+'・空振り三振'+ks+(KK.length-kl-ks?'・その他'+(KK.length-kl-ks):''));}
+  // アウトカウント・先頭打者・同じ投手との対戦回数・三塁走者
+  ['無死','1死','2死'].forEach((x,i)=>sl(x+'の打席',list.filter(a=>a.outs===i)));
+  sl('イニングの先頭打者',list.filter(a=>a.lead));
+  sl('その試合で同じ投手との1打席目',list.filter(a=>a.tto===1));sl('同じ投手との2打席目以降',list.filter(a=>a.tto>=2));
+  const t3=list.filter(a=>/3/.test(a.on||'')&&a.outs<2);if(t3.length)L.push('- 三塁に走者・2死未満の打席：'+t3.length+'打席で、打点がついた打席'+t3.filter(a=>a.rbi>0).length+'（犠飛'+t3.filter(a=>a.sf).length+'・三振'+t3.filter(a=>a.kind==='K').length+'）');
+  const d1=list.filter(a=>/1/.test(a.on||'')&&a.outs<2);if(d1.length)L.push('- 一塁に走者・2死未満の打席：'+d1.length+'打席で、併殺打'+d1.filter(a=>a.res==='DP').length);
   // 前に飛んだ打球（打席の結果だけの試合も含む）
   const bat=list.filter(a=>a.res&&a.res!=='');
   if(bat.length){const kind=r=>['GO','DP','FC','SAC'].indexOf(r)>=0?'ゴロ':['FO','SF'].indexOf(r)>=0?'フライ':r==='LO'?'ライナー':['1B','2B','3B','HR'].indexOf(r)>=0?'安打':r==='E'?'失策':'その他';
@@ -2642,7 +2650,8 @@ const CDEF=['','# 用語の定義（アプリの計算）',
   '- カウント：結果の球を投げる前のボール-ストライク。',
   '- 追い込まれた打席：打席の途中で2ストライクになった打席（2ストライクからの三振を含む）。',
   '- 初球を振った：初球が S・F・X。初球を見送った：初球が B・C。',
-  '- 得点圏：二塁か三塁に走者がいた打席。四死球：四球と死球。打数に四死球・犠打・犠飛は入らない。'];
+  '- 得点圏：二塁か三塁に走者がいた打席。四死球：四球と死球。打数に四死球・犠打・犠飛は入らない。',
+  '- 打者・投手の左右（右打ち・左打ち）は記録していません。打球の方向から引っ張り・流しを決めつけないでください。ストライクゾーンのコース・高さも記録していません。'];
 
 // AIアプリ（ChatGPT・Claudeなど）に貼り付ける相談文：指示＋質問＋この選手の記録。数字はアプリが計算したものだけを渡す
 const CQ=[
@@ -2651,8 +2660,10 @@ const CQ=[
   {k:'grow',l:'伸びているところは？',how:['1. 伸びているところ（以前と直近を比べて、改善の兆しがある数字）','2. 変わっていないところ・伸び悩んでいるところ（以前から続いていて、改善が確かめられない数字。結果が出なかっただけでは伸び悩みとしない）','3. 課題への取り組みとの関係（確かめられることと、まだ確かめられないことを分けて）','4. 次の一手（次の練習か試合で確かめること1つ）'],q:()=>'試合ごとの推移（過程の数字）から、伸びているところと、伸び悩んでいるところを教えてください。課題に取り組み始めた時期との関係も見てください。'},
   {k:'strength',l:'隠れた強みは？',q:()=>'結果（安打）が出ていても出ていなくても、1球ごとの記録を数えて初めて見える、この選手の隠れた強みと、打席内容の偏りを教えてください。'},
   {k:'hidden',l:'見えていない傾向は？',q:()=>'試合を見ているだけでは気づきにくい、記録を数えて初めてわかるこの選手の傾向を教えてください。'},
+  {k:'sign',l:'待て・打ての判断は？',q:()=>'初球・ボール先行・ストライク先行・追い込まれてからのカウントごとに、この選手に「打て」と「待て」のどちらを出すべきか、記録から判断材料を示してください。',
+    how:['1. 打たせたいカウント（数字と打席数とともに）','2. 待たせたいカウント','3. 次の試合で出すサインや声かけ（1つ）']},
   {k:'next',l:'次の練習で何をする？',q:()=>'記録から見て、次の練習で優先して取り組むことを1つ提案してください。'},
-  {k:'pitch',l:'投手として崩れるきっかけは？',q:()=>'投手として、崩れ始めるきっかけ（回・球数・カウント・走者）が記録に表れていますか？'},
+  {k:'pitch',l:'投手として崩れるきっかけは？',q:()=>'投手として、崩れ始めるきっかけ（回・球数・カウント・先頭打者・走者）が記録に表れていますか？交代のめやす（球数・回）も、記録から示してください。'},
   {k:'free',l:'自分で書く',q:()=>''}];
 function consultText(pid,o){
   const f=findPlayer(pid);if(!f)return '';const p=f.p,A=playerPAs(pid),sp=playerSplits(pid),pd=pitcherData(pid),rows=playerRows(pid),s=sumBat(rows.filter(r=>r.b).map(r=>r.b));
@@ -2704,6 +2715,7 @@ function consultText(pid,o){
     pd.games.forEach(x=>L.push([x.date,x.opp,fmtIP(x.outs),x.np==null?'-':x.np,x.byInn?Object.keys(x.byInn).map(i=>i+'回'+x.byInn[i]).join(' '):'-',x.h,x.bb,x.k,x.r,x.er].join(' | ')+(x.mark?'（'+x.mark+'）':'')));
     L.push('- 対戦のまとめ：'+Object.keys(pd.sum).map(k=>k+pd.sum[k]).join(' '));
     L.push('- 回ごとの対戦：'+pd.byInn.map(x=>x.回+'回 打者'+x.打者+' 四死球'+x.四死球+' 三振'+x.三振).join(' / '));
+    if(pd.band&&pd.band.length)L.push('- その試合の球数ごとの対戦（打者に投げ始めた時点の球数）：'+pd.band.join(' / '));
     const PG=pitSeries(pid);if(PG.length>=2){L.push('- 試合ごとの推移（古い順）：日付 | 打者 | 四死球 | 初球ストライク | 3ボールまで');
       PG.forEach(g=>L.push('  '+[g.date,g.bf,g.bb,g.fn?g.fps+'/'+g.fn:'-',g.fn?g.b3+'/'+g.fn:'-'].join(' | ')));}
   }
@@ -2725,7 +2737,6 @@ function consultBox(scope,key,qs,build,intro,note,ph){
     '<textarea id="cq-text" class="cqtext" rows="6" aria-label="AIへの質問文">'+esc(shown)+'</textarea>'+
     '<button class="btn primary wide" data-act="cq-send">質問文をコピーして、AIアプリに送る</button>'+
     '<p class="aimsg" role="status">'+esc(ui.cqMsg||'')+'</p>'+
-    '<p class="ailinks">AIアプリを開く：<a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>　<a href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>　<a href="https://gemini.google.com/" target="_blank" rel="noopener">Gemini</a></p>'+
     '<p class="hint">'+intro+'数字はこのアプリが計算したものだけを渡すので、AIの答えにも根拠が付きます。'+note+'</p></section>';
   return h;
 }
@@ -2780,6 +2791,15 @@ function runStructure(S,t,al){const f=1-t,L=[],P=[...S.pst[f].values()],r=P.redu
   const sc=S.log.filter(e=>e.half===t&&e.runs>0);if(sc.length)L.push('- 得点が入ったプレー：'+sc.map(e=>e.inn+'回'+(e.half?'裏':'表')+' '+(e.k==='pa'?(e.i+1)+'番 '+e.text:al.text(e.text))+'（+'+e.runs+'）').join('、'));
   const rs=pas.filter(e=>/[23]/.test(e.on||''));if(rs.length){const k=rs.map(paKind),ab=k.filter(x=>x!=='BB'&&x!=='SAC').length;
     L.push('- 得点圏（二塁か三塁に走者）の打席：'+rs.length+'打席・'+ab+'打数'+k.filter(x=>x==='H').length+'安打・三振'+k.filter(x=>x==='K').length+'・四死球'+k.filter(x=>x==='BB').length+'・打点'+rs.reduce((a,e)=>a+(e.rbi|0),0));}
+  // 先頭打者の出塁と、その回の得点（ベンチの定番の見方）
+  const inns=[...new Set(pas.map(e=>e.inn))],runIn=i=>S.log.filter(e=>e.half===t&&e.inn===i).reduce((a,e)=>a+(e.runs|0),0),reach=e=>['H','BB'].indexOf(paKind(e))>=0||e.res==='E'||e.res==='FC';
+  if(inns.length){const on1=inns.filter(i=>reach(pas.find(e=>e.inn===i))),off1=inns.filter(i=>!on1.includes(i)),sc_=x=>x.filter(i=>runIn(i)>0).length,pt=x=>x.reduce((a,i)=>a+runIn(i),0);
+    L.push('- 先頭打者が出塁した回：'+on1.length+'回中、得点した回'+sc_(on1)+'（'+pt(on1)+'点）／出塁しなかった回：'+off1.length+'回中、得点した回'+sc_(off1)+'（'+pt(off1)+'点）');}
+  const two=S.log.filter(e=>e.half===t&&(e.o|0)===2).reduce((a,e)=>a+(e.runs|0),0);if(S.R[t])L.push('- 2死からの得点：'+two+'点（全'+S.R[t]+'点）');
+  // 投げた側（この攻撃の相手投手）の制球：初球ストライク・ストライク率・3ボールまでいった打者
+  const byP={};pas.forEach(e=>{const sq=(e.seq||[]).join('');if(!sq||!e.pit)return;const x=byP[e.pit]||(byP[e.pit]={n:0,fs:0,st:0,np:0,b3:0});const k=paCount(sq);
+    x.n++;if(/[CSFX]/.test(sq[0]))x.fs++;x.st+=(sq.match(/[CSFX]/g)||[]).length;x.np+=sq.length;if(k.b>=3||/四球/.test(e.text))x.b3++;});
+  const pk=Object.keys(byP);if(pk.length)L.push('- 投げた投手の制球（打者 | 初球ストライク | ストライク率 | 3ボールまでいった打者）：'+pk.map(n=>{const x=byP[n];return al.text(n)+' '+x.n+'人 | '+x.fs+'/'+x.n+' | '+Math.round(x.st/x.np*100)+'% | '+x.b3;}).join('、'));
   return L;}
 function gameConsultText(gid,o){
   const g=games[gid];if(!g)return '';const S=replay(g),my=[0,1].filter(t=>(g.rt||[])[t]&&rTeam(g.rt[t]));const mine=my.length===1?my[0]:null;
@@ -2852,15 +2872,17 @@ function teamConsultText(teamId,o){
   for(let i=0;i<n;i++){rf.push(TL.reduce((a,x)=>a+(+x.lineFor[i]||0),0));ra.push(TL.reduce((a,x)=>a+(+x.lineAg[i]||0),0));}
   L.push('- 回ごとの得点の合計：'+INNS(rf),'- 回ごとの失点の合計：'+INNS(ra));
   // チームの打席（場面別）
-  const A=[];TL.forEach(x=>x.pas.forEach(a=>{const k=paCount(a.seq);A.push({gid:x.id,date:x.date,win:x.win,inn:a.inn,runners:RUNNERS[a.on]||a.on,risp:/[23]/.test(a.on),seq:a.seq,pitched:x.hasPitch&&a.seq.length>0,two:k.two,first:k.first,pitches:k.n,
-    kind:/三振/.test(a.text)?'K':a.hit?'H':/四球|死球/.test(a.text)?'BB':/犠/.test(a.text)?'SAC':/失策|野選/.test(a.text)?'ROE':'OUT',rbi:a.rbi,xbh:['2B','3B','HR'].indexOf(a.res)>=0,res:a.res,f:a.f,b:k.b,s:k.s});}));
+  const A=[];TL.forEach(x=>{const seenI={},tt={};x.pas.forEach(a=>{const k=paCount(a.seq),lead=!seenI[a.inn];seenI[a.inn]=1;const kk=a.pit+'|'+a.pid;tt[kk]=(tt[kk]||0)+1;A.push({gid:x.id,date:x.date,win:x.win,inn:a.inn,runners:RUNNERS[a.on]||a.on,risp:/[23]/.test(a.on),seq:a.seq,pitched:x.hasPitch&&a.seq.length>0,two:k.two,first:k.first,pitches:k.n,outs:a.o,on:a.on,lead,tto:a.pit?tt[kk]:0,sf:a.res==='SF',
+    kind:/三振/.test(a.text)?'K':a.hit?'H':/四球|死球/.test(a.text)?'BB':/犠/.test(a.text)?'SAC':/失策|野選/.test(a.text)?'ROE':'OUT',rbi:a.rbi,xbh:['2B','3B','HR'].indexOf(a.res)>=0,res:a.res,f:a.f,b:k.b,s:k.s});});});
+  // 先頭打者が出塁した回と、しなかった回の得点（全試合）
+  let lo=[0,0,0],lf=[0,0,0];TL.forEach(x=>{const seen={};x.pas.forEach(a=>{if(seen[a.inn])return;seen[a.inn]=1;const r=(x.lineFor||[])[a.inn-1]|0,on=a.hit||/四球|死球|失策|野選/.test(a.text),v=on?lo:lf;v[0]++;if(r>0)v[1]++;v[2]+=r;});});
   const P=A.filter(a=>a.pitched),sl=(lab,list)=>{const v=splitLine(list);if(v.打席)L.push('- '+lab+'：'+Object.keys(v).map(k=>k+(v[k]==null?'-':v[k])).join(' '));};
   L.push('','## チームの打撃（場面別、アプリで計算）');
   sl('全打席',A);sl('勝った試合',A.filter(a=>a.win==='W'));sl('負けた試合',A.filter(a=>a.win==='L'));sl('得点圏',A.filter(a=>a.risp));sl('走者なし',A.filter(a=>a.runners==='走者なし'));
   sl('1〜3回',A.filter(a=>a.inn<=3));sl('4回以降',A.filter(a=>a.inn>=4));
   if(P.length){sl('追い込まれた打席',P.filter(a=>a.two));sl('追い込まれる前に決着',P.filter(a=>!a.two));
     L.push('- 初球を振った打席：'+P.filter(a=>/[SFX]/.test(a.first)).length+'／'+P.length+'打席　1打席の平均球数：'+(P.reduce((x,a)=>x+a.pitches,0)/P.length).toFixed(1));}
-  const X=crossTabs(A);if(X.length)L.push('','## 掛け合わせ（チーム全体、アプリで計算）',...X);
+  const X=crossTabs(A);if(lo[0]+lf[0])X.push('- 先頭打者が出塁した回：'+lo[0]+'回中、得点した回'+lo[1]+'（'+lo[2]+'点）／出塁しなかった回：'+lf[0]+'回中、得点した回'+lf[1]+'（'+lf[2]+'点）');if(X.length)L.push('','## 掛け合わせ（チーム全体、アプリで計算）',...X);
   // 選手ごと
   const by={};TL.forEach(x=>x.bat.forEach(b=>{const k=b.pid||('n:'+b.name);(by[k]=by[k]||{name:b.name,pid:b.pid,rows:[],orders:{}}).rows.push(b);by[k].orders[b.order]=(by[k].orders[b.order]||0)+1;}));
   L.push('','## 選手ごとの打撃','選手 | 打席 | 打数 | 安打 | 長打 | 打率 | 出塁率 | OPS | 三振 | 四死球 | 盗塁 | 打点 | 多い打順');
@@ -2980,7 +3002,6 @@ function playerDetail(pid){
   h+='<div class="phead"><span class="no">'+esc(digits(p.number)!==''?digits(p.number):'-')+'</span><div><h1>'+esc(p.name)+'</h1><p>'+(p.nick?esc(p.nick)+'　':'')+(p.left?'退団・卒団　':'')+rows.length+'試合に出場</p>'+
     (nh.length>1?'<p class="nhist">背番号：'+nh.map(x=>esc(x.no)+'（'+md(x.from)+(x.to!==x.from?'〜'+md(x.to):'')+'）').join(' → ')+'</p>':'')+'</div></div>';
   const story=c.sample&&pid===storyPid()&&hasStory(),ins=story?storyInsight(pid):'';
-  if(story)h+='<section class="demo"><b>サンプルの選手（8試合分）</b><div class="row"><button class="btn" data-act="demo-tour">案内をもう一度</button><button class="btn primary" data-act="demo-ai">AIに相談する ↓</button></div></section>';
   // 今の課題
   h+='<section class="goal"><b>今の課題</b>';
   if(PV.edit&&ui.canWrite)h+='<textarea id="p-goal" maxlength="200" rows="3" placeholder="例：ステップが早く開く。トップで「ため」をつくる">'+esc(PV.draft!=null?PV.draft:p.goal)+'</textarea>'+
@@ -2992,7 +3013,7 @@ function playerDetail(pid){
   if(gp.length)h+='<details class="glog"><summary>これまでの課題（'+gp.length+'）</summary><ol>'+gp.slice().reverse().map(x=>'<li><b>'+gmark(x.n)+'</b> '+esc(x.text)+'<small>'+md(x.from)+'〜'+md(x.to)+'</small></li>').join('')+'</ol></details>';
   h+='</section>';
   const fu=prefs().formUrl;
-  if(!c.sample)h+=fu?'<a class="btn wide formlink" href="'+esc(fu)+'" target="_blank" rel="noopener">フォームノートを開く ↗</a>':'<button class="link" data-act="p-formurl">フォームノートのURLを設定する</button>';
+  if(!c.sample)h+='<a class="btn wide formlink" href="'+esc(fu||'https://yatti3g-byte.github.io/form-note/')+'" target="_blank" rel="noopener">FormNoteでフォームを見る ↗</a>';
   h+='<h2>打撃（通算）</h2>';
   if(!bat.length)h+='<p class="empty">まだ打席の記録がありません。</p>';
   else{const up=bat.length>5&&isFinite(recent.avg)&&isFinite(s.avg)&&recent.avg>s.avg;
@@ -3074,7 +3095,38 @@ TOURS.demo={t:'1分体験',d:'サンプルの選手で、記録からAI相談ま
   {go:{v:'players',pid:true},el:()=>$('.trend'),t:'でも、中身は伸びている',b:'課題を始めた日（縦線）から、出塁率が上がっています。'},
   {go:{v:'players',pid:true},el:()=>$('.consult .chips'),t:'質問を選ぶ',b:'質問を選ぶだけ。数字はアプリがまとめます。'},
   {go:{v:'players',pid:true},el:()=>$('[data-act="cq-send"]'),t:'AIに聞いてみる',b:'ボタン1つで、AIアプリに質問文が入ります。',act:()=>'cq-send',al:()=>'AIアプリに送る'}]};
-const TOUR_KEYS=['view','prep','karte','ai'];
+
+// 記録の入力：サンプルの試合で、実際に押しながら覚える（「やってみる」の手順は、押すと次へ進む）
+const evN=()=>{const g=games[ui.gid];return g?g.ev.length:0;},bipN=()=>{const g=games[ui.gid];return g?g.ev.filter(e=>e.t==='bip').length:0;};
+TOURS.input={t:'記録の入力',d:'1球ずつの入れ方・打ったとき・訂正（実際に押しながら）',m:2,steps:[
+  {go:G('live','score'),el:()=>$('[data-act="pitch"][data-k="B"]'),t:'1球ずつ押す',b:'投手が1球投げるたびに押します。「ボール」を押してみましょう。',do:1,done:b=>evN()>b.n},
+  {go:G('live','score'),el:()=>[...document.querySelectorAll('[data-act="pitch"][data-k="C"],[data-act="pitch"][data-k="S"],[data-act="pitch"][data-k="F"]')],t:'ストライクは3つ',b:'見逃し・空振り・ファウルを分けて押します。どれか押してみましょう。',do:1,done:b=>evN()>b.n},
+  {go:G('live','score'),el:()=>$('[data-act="bip"]'),t:'打ったら「打った」',b:'打球が前に飛んだら「打った」。押してみましょう。',do:1,done:b=>ui.sheet==='res'||ui.mode==='place'||bipN()>b.bip},
+  {go:G('live','score'),el:()=>$('#sheet .panel'),t:'結果を選ぶ',b:'よく使う結果は下の大きいボタンです。「ゴロ」を押してみましょう。',do:1,done:b=>ui.mode==='place'||bipN()>b.bip},
+  {go:G('live','score'),el:()=>ui.sheet?$('#sheet .panel'):$('.place .fgrid'),t:'打球の方向',b:'打球を捕った野手を押します。走者がいれば、行き先を確かめて記録します。',do:1,done:b=>bipN()>b.bip&&!ui.sheet},
+  {go:G('live','score'),el:()=>$('.lastrow'),t:'間違えたら',b:'いま入れた記録がここに出ます。「直す」で訂正、「↩ 取り消し」で1つ前に戻せます。'},
+  {go:G('live','score'),el:()=>[$('#field'),$('[data-act="runner"]')].filter(Boolean),t:'盗塁・進塁',b:'走者を指で次の塁へ動かすか、「盗塁・進塁」で入れます。'},
+  {go:G('live','score'),el:()=>$('[data-act="more"]'),t:'もっと簡単に',b:'「その他」から、打席の結果だけを入れる方法にも切りかえられます。'},
+  {go:G('live','score'),el:()=>null,t:'入力は以上です',b:'このサンプル試合は、自由に入力して大丈夫です。'}]};
+// 「やってみる」の手順：画面を押せるようにし、押したら次へ。画面が変わったら光る場所を合わせ直す
+function tourTick(){if(ui.tour==null||!$('#tour'))return;const st=TOURS[ui.tourKey]&&TOURS[ui.tourKey].steps[ui.tour];if(!st||!st.do)return;
+  if(st.done(ui.tourBase||{})){if(!ui.tourNext){ui.tourNext=setTimeout(()=>{ui.tourNext=0;if(ui.tour!=null){ui.tour++;tourShow();}},450);}return;}
+  requestAnimationFrame(()=>{let els=st.el();if(els&&!Array.isArray(els))els=[els];tourPlace((els||[]).filter(Boolean));});}
+{const r0=render,s0=renderSheet;render=function(){r0();tourTick();};renderSheet=function(){s0();tourTick();};}
+TOURS.subs={t:'選手交代',d:'代打・代走・守備交代・投手交代の入れ方',m:1,steps:[
+  {go:G('live','score'),el:()=>$('[data-act="subs"]'),t:'選手交代はここから',b:'代打・代走・守備交代・投手交代は、記録画面の「選手交代」から入れます。'},
+  {go:{v:'game',g:'live',tab:'lineup',subs:1},el:()=>[...document.querySelectorAll('[data-act="lu-team"]')],t:'交代するチーム',b:'交代するチームを選びます。はじめは守っているチームが選ばれています。'},
+  {go:{v:'game',g:'live',tab:'lineup',subs:1},el:()=>$('ol.lu'),t:'名前と守備位置を書きかえる',b:'代打・代走は、その打順の名前を新しい選手に書きかえます。守備位置を選ぶと、その位置にいた選手と入れかわります。'},
+  {go:{v:'game',g:'live',tab:'lineup',subs:1},el:()=>{const s=[...document.querySelectorAll('ol.lu select')].find(x=>x.value==='1'||/投/.test(x.options[x.selectedIndex]&&x.options[x.selectedIndex].text||''));return s?s.closest('li'):null;},t:'投手交代',b:'控えの投手に代えるときは、投手の打順の名前を書きかえます。野手と入れかえるときは、その選手の守備位置を「投」にします。'},
+  {go:{v:'game',g:'live',tab:'lineup',subs:1},el:()=>$('[data-act="lu-save"]'),t:'交代を記録',b:'まとめて入れたら「交代を記録」。経過に交代として残り、成績も交代の前と後で分かれます。'},
+  {go:G('live','score'),el:()=>null,t:'選手交代は以上です',b:'間違えたときは、経過の交代の記録を押すと直せます。'}]};
+TOURS.after={t:'試合が終わったら',d:'試合の終え方・成績を送る・AIに相談・控えファイル',m:1,steps:[
+  {go:G('live','score'),el:()=>$('[data-act="more"]'),t:'試合を終える',b:'コールドや時間切れのときは、「その他」→「試合を終了する」で理由を選びます。あとで取り消して再開もできます。'},
+  {go:G('done','stats'),el:()=>$('.imgbtn'),t:'成績を画像で送る',b:'スコアと打撃・投手成績が1枚の画像になります。LINEなどで保護者に送れます。'},
+  {go:G('done','stats'),el:()=>{const c=$('.consult');return c?[c.querySelector('h2'),c.querySelector('.chips')]:null;},t:'試合をAIに相談',b:'勝ち負けを分けた要因、先頭打者や四球からの失点、投手交代のタイミングを相談できます。'},
+  {go:{v:'home'},el:()=>$('[data-act="backup"]'),t:'控えファイルを作る',b:'記録はスマホに自動で保存されています。ときどき控えファイルを作っておけば、スマホをなくしても戻せます。'},
+  {go:{v:'home'},el:()=>null,t:'試合のあとは以上です',b:'次の試合は「新しい試合を始める」から。自チームと打順は前の試合から入れられます。'}]};
+const TOUR_KEYS=['demo','view','input','subs','after','prep','karte','ai'];
 function toursSeen(){try{return JSON.parse(localStorage.getItem('tapscore-tours-seen')||'{}')||{};}catch(e){return {};}}
 function tourList(){const seen=toursSeen();
   return '<ul class="tours">'+TOUR_KEYS.map(k=>{const T=TOURS[k];return '<li><button class="tourbtn" data-act="tour-go" data-v="'+k+'"><b>'+esc(T.t)+(seen[k]?'<span class="seen">見た</span>':'')+'</b><small>'+esc(T.d)+'（約'+T.m+'分）</small></button></li>';}).join('')+'</ul>';}
@@ -3090,11 +3142,12 @@ function tourStart(key){closeSheet();const T=TOURS[key||'view'];if(!T)return;ui.
 function tourEnd(){const key=ui.tourKey;ui.tour=null;const o=$('#tour');if(o)o.remove();
   try{localStorage.setItem('tapscore-tour-seen','1');const s=toursSeen();s[key]=1;localStorage.setItem('tapscore-tours-seen',JSON.stringify(s));}catch(e){}
   if(key==='demo'){ui.ret=null;render();return;}   // 体験のあとは、そのままカルテ（送るボタンの所）に
-  if(key==='view'){ui.view='';if(ui.tourCtx&&games[ui.tourCtx.live]){ui.gid=ui.tourCtx.live;ui.tab='score';}}else{ui.gid=null;ui.view='';}
+  if(key==='view'||key==='input'||key==='subs'){ui.view='';if(ui.tourCtx&&games[ui.tourCtx.live]){ui.gid=ui.tourCtx.live;ui.tab='score';}}else{ui.gid=null;ui.view='';}
   ui.ret=null;render();window.scrollTo(0,0);}
 function tourGo(go){const c=ui.tourCtx,k=JSON.stringify(go);if(ui.tourAt===k)return;ui.tourAt=k;
   ui.mode='idle';ui.pend=null;ui.luDraft=null;ui.luFrom='';ui.luFix=false;ui.ret=null;ui.cq=null;
-  if(go.v==='game'){ui.view='';ui.gid=go.g==='done'?c.done:c.live;ui.tab=go.tab||'score';if(go.tab==='lineup'){const g=games[ui.gid];ui.luTeam=g&&(g.rt||[])[1]&&!(g.rt||[])[0]?1:0;}}
+  if(go.v==='game'){ui.view='';ui.gid=go.g==='done'?c.done:c.live;ui.tab=go.tab||'score';if(go.tab==='lineup'){const g=games[ui.gid];ui.luTeam=g&&(g.rt||[])[1]&&!(g.rt||[])[0]?1:0;}
+    if(go.subs){const S=replayRO(games[ui.gid]);ui.luTeam=S&&!S.ended?1-S.half:ui.luTeam;ui.luFix=false;ui.luDraft=null;ui.luFrom='score';}}
   else{ui.gid=null;ui.view=go.v==='home'?'':go.v;
     if(go.v==='players')ui.pv={team:c.tid,pid:go.pid?c.pid:null,edit:false};
     if(ui.tourKey==='demo'&&go.pid){ui.cq={scope:'player',key:c.pid,q:'grow',free:'',feel:'',hide:true};ui.trB='obp';}
@@ -3104,15 +3157,16 @@ function tourGo(go){const c=ui.tourCtx,k=JSON.stringify(go);if(ui.tourAt===k)ret
   window.scrollTo(0,0);}
 function tourShow(){
   const T=TOURS[ui.tourKey],st=T&&T.steps[ui.tour];if(!st)return tourEnd();
+  ui.tourBase={n:typeof evN==='function'?evN():0,bip:typeof bipN==='function'?bipN():0};
   tourGo(st.go);
   let o=$('#tour');
   if(!o){o=document.createElement('div');o.id='tour';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
     o.innerHTML='<div class="tmask"></div><div class="tspot"></div><div class="tcard"></div>';document.body.appendChild(o);}
-  o.setAttribute('aria-label',T.t);
+  o.setAttribute('aria-label',T.t);o.classList.toggle('do',!!st.do);
   const last=ui.tour===T.steps.length-1;
   o.querySelector('.tcard').innerHTML='<span class="tn">'+esc(T.t)+'　'+(ui.tour+1)+' / '+T.steps.length+'</span><h3>'+esc(st.t)+'</h3><p>'+esc(st.b)+'</p>'+
     '<div class="tbar">'+(last?(st.act?'<button class="link" data-tour="end">閉じる</button>':''):'<button class="link" data-tour="end">終わる</button>')+(ui.tour?'<button class="btn" data-tour="prev">戻る</button>':'')+
-    (last&&st.act?'<button class="btn primary" data-tour="act">'+esc(st.al())+'</button>':'<button class="btn primary" data-tour="next">'+(last?'閉じる':'次へ')+'</button>')+'</div>';
+    (last&&st.act?'<button class="btn primary" data-tour="act">'+esc(st.al())+'</button>':st.do?'<button class="btn" data-tour="next">とばす</button>':'<button class="btn primary" data-tour="next">'+(last?'閉じる':'次へ')+'</button>')+'</div>';
   // 対象が見えるところまでスクロールしてから、明るく抜く
   let els=st.el();if(els&&!Array.isArray(els))els=[els];els=(els||[]).filter(Boolean);
   if(els.length){const r0=els[0].getBoundingClientRect();if(r0.top<8||r0.top>innerHeight*0.45)window.scrollBy(0,r0.top-(st.go.v==='game'&&st.go.tab==='score'?8:72));}

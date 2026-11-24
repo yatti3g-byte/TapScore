@@ -54,10 +54,10 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}foote
 <li><b>選手カルテ</b>選手ごとの成績</li>
 <li><b>AIに相談</b>記録をAIに渡す</li>
 </ul>
-<p style="margin:8px 0 0;font-size:14px;color:var(--muted)">画面の見方は、アプリのトップ画面の <span class="b">チュートリアル</span> で、サンプルの試合を使って1分ずつ案内します。</p>
+<p style="margin:8px 0 0;font-size:14px;color:var(--muted)">画面の見方は、アプリのトップ画面の <span class="b">チュートリアル</span> で、サンプルの試合を使って1分ずつ案内します。「1分体験」では、サンプルの選手でAI相談までを案内します。「記録の入力」では、サンプルの試合で実際にボタンを押しながら、1球ずつの入れ方を覚えられます。ほかに「選手交代」「試合が終わったら」もあります。</p>
 </div>
 
-<div class="warn">記録はこのスマホのブラウザの中にだけ保存されます。試合のあとはトップ画面の <span class="b">記録をファイルで保存・送る</span> で、ドライブやLINEのKeepなどに控えを残してください。</div>
+<div class="warn">記録はこのスマホに自動で保存されます（保存の操作はいりません）。スマホをなくしたときのために、ときどきトップ画面の <span class="b">控えファイルを作る</span> で、ドライブやLINEのKeepなどに控えを残してください。</div>
 
 <h2>Q&amp;A</h2>
 <input class="search" id="q" type="search" placeholder="キーワードで探す（例：盗塁、名前、AI）" aria-label="Q&Aをキーワードで探す">
@@ -97,7 +97,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}foote
 
 <p class="grp">AIに相談</p>
 <details><summary>どう使う？</summary><p>選手カルテ・試合の成績タブ・選手カルテの一覧にある「AIに相談」で、質問を選びます。ベンチから見た印象や悩みがあれば書き足し、<span class="b">質問文をコピーして、AIアプリに送る</span> を押します（FormNoteと同じ操作です）。スマホでは送り先のアプリ（ChatGPT・Claude・Geminiなど）を選ぶと、質問文が入った状態で開きます。パソコンでは、質問文が入った状態でChatGPTが開きます。</p></details>
-<details><summary>質問文が入らなかった／ほかのAIを使いたい</summary><p>送るときに、質問文はコピーもしてあります。文章が入っていないときは、AIアプリの入力欄に貼り付けてください。パソコンでClaude・Geminiを使うときは、ボタンの下の「AIアプリを開く」から開いて貼り付けます。質問文は、送る前に直すこともできます。</p></details>
+<details><summary>質問文が入らなかった／ほかのAIを使いたい</summary><p>送るときに、質問文はコピーもしてあります。文章が入っていないときは、AIアプリの入力欄に貼り付けてください。パソコンでClaude・Geminiを使うときは、そのAIを開いて貼り付けます。質問文は、送る前に直すこともできます。</p></details>
 <details><summary>お金やアカウントは必要？</summary><p>TapScore側は不要です。貼り付けるAIアプリのアカウントと、その料金プランに従います。</p></details>
 <details><summary>子どもの名前がAIに渡らない？</summary><p>初めから「選手A」「相手1」などに置きかえてあります。<span class="b">渡す文章を見る</span> で、送る前に中身を確かめられます。</p></details>
 <details><summary>ベンチから見た印象は書いたほうがいい？</summary><p>書かなくても使えます。「最近ヒットが出ず焦っているように見える」のように書くと、その印象と記録が合っているところ・ずれているところをAIが答えるので、見ているだけでは気づかない点が出やすくなります。</p></details>
@@ -107,15 +107,16 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}foote
 
 <p class="grp">保存・共有</p>
 <details><summary>記録はどこに保存される？</summary><p>このスマホのブラウザの中だけです（サーバーには送りません）。ブラウザのデータを消す、プライベートモードで使う、別のブラウザで開くと見えなくなるので、ファイルで控えを残してください。</p></details>
-<details><summary>控え（バックアップ）はどう残す？</summary><p>トップ画面の <span class="b">記録をファイルで保存・送る</span>。スマホでは共有の画面が開くので、Googleドライブ・iCloud・LINEのKeepなどに保存します。トップ画面に最後に残した日が出て、そのあと記録が変わると知らせます。</p></details>
-<details><summary>スマホを買いかえる・記録を戻したい</summary><p>残したファイルを、新しいスマホで <span class="b">記録のファイルを読み込む</span>。同じファイルを2回読んでも増えず、古いファイルで新しい記録を上書きしません。</p></details>
-<details><summary>チームの記録を1台にまとめたい</summary><p>記録係それぞれが <span class="b">記録をファイルで保存・送る</span> でファイルを送り、まとめる人（監督など）が <span class="b">記録のファイルを読み込む</span>。新しい試合は追加、同じ試合は先まで進んでいる方が残ります。選手カルテは、まとめたスマホで全試合分が見られます。</p></details>
+<details><summary>控え（バックアップ）はどう残す？</summary><p>トップ画面の <span class="b">控えファイルを作る</span>。スマホでは共有の画面が開くので、Googleドライブ・iCloud・LINEのKeepなどに保存します。トップ画面に最後に残した日が出て、そのあと記録が変わると知らせます。</p></details>
+<details><summary>スマホを買いかえる・記録を戻したい</summary><p>控えファイルを、新しいスマホのトップ画面の <span class="b">ファイルを開く</span> で開きます。同じファイルを2回読んでも増えず、古いファイルで新しい記録を上書きしません。</p></details>
+<details><summary>チームの記録を1台にまとめたい</summary><p>記録係それぞれが <span class="b">控えファイルを作る</span> でファイルを送り、まとめる人（監督など）が <span class="b">ファイルを開く</span> で開きます。新しい試合は追加、同じ試合は先まで進んでいる方が残ります。選手カルテは、まとめたスマホで全試合分が見られます。</p></details>
 <details><summary>記録係を交代したい</summary><p><span class="b">その他</span> → <span class="b">記録係を交代する・途中経過を送る</span> で、リンクを次の人に送ります。受け取った人は続きから入力できます。</p></details>
 <details><summary>2人で同じ試合を記録してしまった</summary><p>リンクやファイルを受け取ったとき、どちらが先まで進んでいるかを自動で見分けます。2台で別々に進んでいたときは、どちらを残すか、両方残すかを選べます。黙って消すことはありません。</p></details>
 <details><summary>チームの全員にリアルタイムで見せたい</summary><p>サーバーを使わないアプリなので、リアルタイムでは共有されません。途中経過は、そのとき記録している人がリンクを送ってください。</p></details>
 <details><summary>電波が悪いグラウンドでも使える？</summary><p>一度このページを開いたスマホなら、電波がなくても開いて記録できます（記録はスマホの中に保存されます）。リンクを送るときだけ通信が必要です。</p></details>
-<details><summary>成績を送りたい・残したい</summary><p><span class="b">成績</span> タブの <span class="b">成績を画像で保存・送る</span> で、LINEなどに送れる1枚の画像になります。あとで読み込み直して直したいときは、成績タブのいちばん下の「この試合をHTMLで保存」。</p></details>
-<details><summary>HTMLで保存した試合を直したい</summary><p>トップ画面の下の <span class="b">そのほか</span> → <span class="b">試合のファイルを開く</span> で読み込むと、訂正や続きの入力ができます。</p></details>
+<details><summary>成績を送りたい・残したい</summary><p><span class="b">成績</span> タブの <span class="b">成績を画像で保存・送る</span> で、LINEなどに送れる1枚の画像になります。記録そのものを残したいときは、トップ画面の「控えファイルを作る」（全試合と名簿）。ほかの人のスマホに試合を渡すときは、記録画面の「その他」→「記録係を交代する・途中経過を送る」。</p></details>
+<details><summary>どのファイルも「ファイルを開く」でいい？</summary><p>はい。控えファイル、送られてきた試合のファイル、名簿のCSVのどれでも、トップ画面の <span class="b">ファイルを開く</span> で開けます。中身を見て、アプリが自動で振り分けます。</p></details>
+<details><summary>以前HTMLで保存した試合を直したい</summary><p>トップ画面の <span class="b">ファイルを開く</span> で開くと、訂正や続きの入力ができます。</p></details>
 
 <p class="grp">そのほか</p>
 <details><summary>お金はかかる？登録は必要？</summary><p>どちらも不要です。ページを開くだけで使えます。応援したい方は、このページのいちばん下の「Buy Me a Coffee」からどうぞ（任意です。機能は変わりません）。</p></details>
