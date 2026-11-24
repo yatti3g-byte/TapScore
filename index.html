@@ -487,6 +487,9 @@ details.more.home[open]{padding-bottom:12px}details.more.home .btn{margin-top:6p
 .democard small{display:block;color:var(--muted);font-size:12px;margin-top:6px}
 .demo{background:var(--accent2);border:1px solid var(--accent);border-radius:14px;padding:12px 14px;margin:0 0 12px}
 .demo p{margin:6px 0;line-height:1.6}.demo .row{margin-top:8px}.demo.next small{display:block;color:var(--muted);font-size:12px;margin-top:6px;text-align:center}
+.consult .cqin{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);margin:8px 0 2px}
+.consult .cqtext{width:100%;box-sizing:border-box;font:inherit;font-size:13px;line-height:1.55;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);resize:vertical;margin:6px 0 8px}
+.consult .aimsg{min-height:1.3em;margin:6px 0 0;font-size:13px;font-weight:700;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -2340,10 +2343,18 @@ const acts={
   'p-home'(){navBack();},
   'p-team'(el){ui.pv.team=el.dataset.v;ui.pv.sq='';render();},
   'p-sq'(el){ui.pv.sq=el.dataset.v;ui.trBi=ui.trPi=null;render();},
-  cq(el){const f=$('#cq-free');if(f)ui.cq.free=f.value;ui.cq.q=el.dataset.v;render();if(el.dataset.v==='free'){const t=$('#cq-free');if(t)t.focus();}},
+  cq(el){const f=$('#cq-free');if(f)ui.cq.free=f.value;ui.cq.q=el.dataset.v;ui.cq.edited=null;ui.cqMsg='';render();if(el.dataset.v==='free'){const t=$('#cq-free');if(t)t.focus();}},
   async 'cq-copy'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;render();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
     const ok=await copyText(ui.cqText||'');toast(ok?'コピーしました。AIアプリに貼り付けて送ってください':'コピーできませんでした。「渡す文章を見る」から選んでコピーしてください');
     if(!ok){const d=$('.cqprev');if(d)d.open=true;}},
+  'cq-send'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;if(ui.cqBuild&&ui.cq.edited==null)ui.cqText=ui.cqBuild();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
+    const ta=$('#cq-text'),t=ta?ta.value:(ui.cqText||''),cp=copyText(t),say=m=>{ui.cqMsg=m;const e=$('.consult .aimsg');if(e)e.textContent=m;};
+    const canSend=!!navigator.share&&!(window.claude&&window.claude.use)&&matchMedia('(pointer:coarse)').matches;
+    if(canSend){navigator.share({text:t}).then(async()=>say((await cp)?'質問文はコピー済みです。AIアプリに文章が入っていないときは、貼り付けてください。':''),
+        async e=>{if(e&&e.name==='AbortError'){say((await cp)?'質問文をコピーしました。':'');return;}say((await cp)?'質問文をコピーしました。AIアプリに貼り付けてください。':'質問文を長押しでコピーして、AIアプリに貼り付けてください。');});return;}
+    // パソコン：文章が入った状態でChatGPTを開く（長い文章も渡せる「#?q=」の形）
+    const w=window.open('https://chatgpt.com/#?q='+encodeURIComponent(t),'_blank');if(w){try{w.opener=null;}catch(e){}}
+    cp.then(ok=>say(w?'ChatGPTを開きました。質問文はコピー済みなので、文章が入っていないときは貼り付けてください。':ok?'質問文をコピーしました。AIアプリに貼り付けてください。':'質問文を選んでコピーし、AIアプリに貼り付けてください。'));},
   'cq-gpt'(){const f=$('#cq-free');if(f){ui.cq.free=f.value;if(ui.cqBuild)ui.cqText=ui.cqBuild();}if(ui.cq.q==='free'&&!String(ui.cq.free||'').trim()){toast('相談したいことを書いてください');return;}
     const t=ui.cqText||'';copyText(t);   // 開いたChatGPTに文章が入らなかったときのために、コピーもしておく
     // 長い文章でも渡せるように「#?q=」の形で（? だと長い文章が渡らないことがある）
@@ -2435,7 +2446,7 @@ document.addEventListener('click',ev=>{
   if(a==='pitch'||a==='hbp'||a==='undo'||a==='bip'||a==='qres'||a==='kd'){const now=Date.now();if(now-(ui.tapAt||0)<300)return;ui.tapAt=now;}
   const fn=acts[a];if(fn)fn(el);
 });
-document.addEventListener('change',ev=>{const el=ev.target;if(el&&el.id==='cq-hide'&&ui.cq){ui.cq.hide=el.checked;const f=$('#cq-free');if(f)ui.cq.free=f.value;render();return;}if(el&&el.id==='rsin'){const f=el.files&&el.files[0];el.value='';readRosterFile(f);return;}if(el&&el.id==='bkin'){const f=el.files&&el.files[0];el.value='';restoreBackup(f);return;}if(el&&el.id==='imp'){const f=el.files&&el.files[0];el.value='';importReaderFile(f);}});
+document.addEventListener('change',ev=>{const el=ev.target;if(el&&el.id==='cq-hide'&&ui.cq){ui.cq.hide=el.checked;ui.cq.edited=null;const f=$('#cq-free');if(f)ui.cq.free=f.value;render();return;}if(el&&el.id==='rsin'){const f=el.files&&el.files[0];el.value='';readRosterFile(f);return;}if(el&&el.id==='bkin'){const f=el.files&&el.files[0];el.value='';restoreBackup(f);return;}if(el&&el.id==='imp'){const f=el.files&&el.files[0];el.value='';importReaderFile(f);}});
 document.addEventListener('input',ev=>{
   const el=ev.target;
   if(el.dataset&&el.dataset.rs&&ui.rd){const k=el.dataset.rs,R=ui.rd.find(c=>c.id===ui.rdClub);if(!R)return;const t=R.teams.find(x=>x.id===ui.rdTeam);ui.rdDirty=true;
@@ -2443,7 +2454,9 @@ document.addEventListener('input',ev=>{
     else if(k==='opp')R.opponents=el.value.split('\n').map(x=>x.trim()).filter(Boolean);else if(k==='tname'&&t)t.name=el.value;
     else if(t&&t.players[+el.dataset.i])t.players[+el.dataset.i][k]=k==='number'?digits(el.value):el.value;
     return;}
-  if((el.id==='cq-free'||el.id==='cq-feel')&&ui.cq){if(el.id==='cq-free')ui.cq.free=el.value;else ui.cq.feel=el.value;if(ui.cqBuild){ui.cqText=ui.cqBuild();const sm=$('.cqprev summary'),pr=$('.cqprev pre');if(sm)sm.textContent='渡す文章を見る（'+ui.cqText.length+'字）';if(pr)pr.textContent=ui.cqText;}return;}
+  if((el.id==='cq-free'||el.id==='cq-feel')&&ui.cq){if(el.id==='cq-free')ui.cq.free=el.value;else ui.cq.feel=el.value;
+    if(ui.cqBuild){ui.cqText=ui.cqBuild();const ta=$('#cq-text');if(ta&&ui.cq.edited==null)ta.value=ui.cqText;}return;}
+  if(el.id==='cq-text'&&ui.cq){ui.cq.edited=el.value;return;}   // 質問文を自分で直したら、その文章を送る
   if(!el.dataset||!el.dataset.lu||!ui.luDraft)return;
   if(el.dataset.lu==='team')ui.luDraft.name=el.value;
   else if(el.dataset.lu==='sp')ui.luDraft.sp=el.value;
@@ -2688,22 +2701,21 @@ function consultText(pid,o){
 }
 // 相談の入れもの（選手・試合・チームで共通）。qs：質問の候補、build(o)：渡す文章、note：渡す中身の説明
 function consultBox(scope,key,qs,build,intro,note,ph){
-  let o=ui.cq;if(!o||o.scope!==scope||o.key!==key||!qs.some(x=>x.k===o.q))o=ui.cq={scope,key,q:qs[0].k,free:(o&&o.scope===scope&&o.key===key)?o.free:'',feel:(o&&o.scope===scope&&o.key===key)?o.feel:'',hide:o&&o.scope===scope?o.hide:true};
+  let o=ui.cq;if(!o||o.scope!==scope||o.key!==key||!qs.some(x=>x.k===o.q))o=ui.cq={scope,key,edited:null,q:qs[0].k,free:(o&&o.scope===scope&&o.key===key)?o.free:'',feel:(o&&o.scope===scope&&o.key===key)?o.feel:'',hide:o&&o.scope===scope?o.hide:true};
   // 渡す文章は、記録・名簿・質問・設定が同じなら作り直さない（グラフの切りかえなどで重くならないように）
   const sig=ROSTER_V+'|'+Object.keys(games).map(id=>{const g=games[id];return id+':'+((g&&g.ev)||[]).length+':'+((g&&g.upd)||0);}).join(',')+'|'+JSON.stringify(o)+'|'+((ui.pv&&ui.pv.sq)||'');
   ui.cqBuild=()=>build(ui.cq);let txt;if(ui.cqCache&&ui.cqCache.sig===sig)txt=ui.cqCache.txt;else{txt=ui.cqBuild();ui.cqCache={sig,txt};}ui.cqText=txt;
-  // スマホで共有画面が使えるときは「AIアプリに送る」（アプリを選ぶだけで文章が入る）を主に、コピーは控え
-  const canSend=!!navigator.share&&!(window.claude&&window.claude.use)&&matchMedia('(pointer:coarse)').matches;
-  let h='<section class="consult"><h2>'+({player:'この選手について',game:'この試合について',team:'このチームについて'}[scope]||'')+'AIに相談</h2><p class="hint">'+(canSend?'質問を選んで「AIアプリに送る」を押し、ChatGPTなどのアプリを選びます。':'質問を選んで文章をコピーし、ChatGPTなどのAIアプリに貼り付けます。')+'</p>'+
+  // FormNote と同じ流れ：質問を選ぶ → 前提を書く → 質問文（見て直せる）→ 「質問文をコピーして、AIアプリに送る」→ 結果のひと言
+  const shown=o.edited!=null?o.edited:txt;
+  let h='<section class="consult"><h2>'+({player:'この選手について',game:'この試合について',team:'このチームについて'}[scope]||'')+'AIに相談</h2>'+
     '<div class="chips">'+qs.map(x=>'<button class="chip'+(o.q===x.k?' on':'')+'" data-act="cq" data-v="'+x.k+'" aria-pressed="'+(o.q===x.k)+'">'+esc(x.l)+'</button>').join('')+'</div>';
   if(o.q==='free')h+='<label class="fld" for="cq-free"><span>相談したいこと</span><textarea id="cq-free" rows="3" maxlength="300" placeholder="'+esc(ph||'')+'">'+esc(o.free)+'</textarea></label>';
-  h+='<label class="fld" for="cq-feel"><span>ベンチから見た印象（書かなくてもよい）</span><input id="cq-feel" maxlength="80" placeholder="例：最近ヒットが出ず、焦っているように見える" value="'+esc(o.feel||'')+'"></label>';
+  h+='<input id="cq-feel" class="cqin" maxlength="80" aria-label="前提（ベンチから見た印象・悩み）" placeholder="ベンチから見た印象・悩み" value="'+esc(o.feel||'')+'">';
   h+='<label class="ck"><input type="checkbox" id="cq-hide"'+(o.hide?' checked':'')+'> 選手の名前を伏せる（「選手A」などとして渡す）</label>'+
-    // いちばん手間が少ないのは、文章が入った状態でChatGPTを開くこと（貼り付けがいらない）。念のためコピーもしておく
-    '<button class="btn primary wide" data-act="cq-gpt">ChatGPTで相談する</button><p class="hint">この相談の文章が入った状態で、ChatGPTが開きます。</p>'+
-    (canSend?'<button class="btn wide" data-act="cq-share">ほかのAIアプリに送る</button>':'<button class="btn wide" data-act="cq-copy">文章をコピー（Claude・Geminiなどに貼り付け）</button>')+
+    '<textarea id="cq-text" class="cqtext" rows="6" aria-label="AIへの質問文">'+esc(shown)+'</textarea>'+
+    '<button class="btn primary wide" data-act="cq-send">質問文をコピーして、AIアプリに送る</button>'+
+    '<p class="aimsg" role="status">'+esc(ui.cqMsg||'')+'</p>'+
     '<p class="ailinks">AIアプリを開く：<a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>　<a href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>　<a href="https://gemini.google.com/" target="_blank" rel="noopener">Gemini</a></p>'+
-    '<details class="cqprev"><summary>渡す文章を見る（'+txt.length+'字）</summary><pre>'+esc(txt)+'</pre></details>'+
     '<p class="hint">'+intro+'数字はこのアプリが計算したものだけを渡すので、AIの答えにも根拠が付きます。'+note+'</p></section>';
   return h;
 }
@@ -3041,8 +3053,8 @@ const TOURS={
   {go:{v:'home'},el:()=>null,t:'選手カルテは以上です',b:'退団・卒団した選手も、成績は残って一覧の下に出ます。'}]},
  ai:{t:'AIに相談',d:'選手・試合・チームの記録をAIアプリに渡して相談する',m:1,steps:[
   {go:{v:'players',pid:true},el:()=>{const c=$('.consult');return c?[c.querySelector('h2'),c.querySelector('.chips')]:null;},t:'質問を選ぶ',b:'選手カルテの下の「AIに相談」で、聞きたいことを選びます。「自分で書く」もできます。'},
-  {go:{v:'players',pid:true},el:()=>[$('.consult .ck'),$('[data-act="cq-gpt"]')].filter(Boolean),t:'名前を伏せてAIへ',b:'名前は初めから「選手A」に置きかえてあります。「ChatGPTで相談する」を押すと、文章が入った状態でChatGPTが開きます。'},
-  {go:{v:'players',pid:true},el:()=>$('.cqprev'),t:'渡す中身を確かめる',b:'質問・AIへの指示・この選手の記録が入っています。数字はこのアプリが計算したものなので、AIの答えにも根拠の打席が付きます。'},
+  {go:{v:'players',pid:true},el:()=>$('#cq-text'),t:'質問文を確かめる',b:'質問・AIへの指示・この選手の記録が入っています。数字はこのアプリが計算したものなので、AIの答えにも根拠の打席が付きます。直してから送ることもできます。'},
+  {go:{v:'players',pid:true},el:()=>[$('.consult .ck'),$('[data-act="cq-send"]')].filter(Boolean),t:'名前を伏せてAIへ',b:'名前は初めから「選手A」に置きかえてあります。「質問文をコピーして、AIアプリに送る」を押すと、ChatGPTなどに送れます。'},
   {go:G('done','stats'),el:()=>$('.consult'),t:'試合について相談',b:'試合の成績タブでは、試合を左右した要因（得点・失点の構造）・相手投手の攻略・投手交代のタイミングを相談できます。'},
   {go:{v:'players'},el:()=>$('.consult'),t:'チームについて相談',b:'選手カルテの一覧のいちばん下では、勝ち試合と負け試合の違い・打順・得点と失点のパターン・練習の優先順位を相談できます。'},
   {go:{v:'home'},el:()=>null,t:'AIに相談は以上です',b:'試合の記録が多いほど、AIの答えの根拠が増えます。打席が少ないうちは「まだ判断できない」と答えるように指示しています。'}]}
@@ -3051,7 +3063,7 @@ TOURS.demo={t:'1分体験',d:'サンプルの選手で、記録からAI相談ま
   {go:{v:'players',pid:true},el:()=>$('.tiles'),t:'選手カルテ',b:'試合を記録すると、自動でできます。打率は.250。'},
   {go:{v:'players',pid:true},el:()=>$('.trend'),t:'でも、中身は伸びている',b:'課題を始めた日（縦線）から、出塁率が上がっています。'},
   {go:{v:'players',pid:true},el:()=>$('.consult .chips'),t:'質問を選ぶ',b:'質問を選ぶだけ。数字はアプリがまとめます。'},
-  {go:{v:'players',pid:true},el:()=>$('[data-act="cq-gpt"]'),t:'AIに聞いてみる',b:'ChatGPTが開き、この相談がそのまま入ります。',act:()=>'cq-gpt',al:()=>'ChatGPTで答えを見る'}]};
+  {go:{v:'players',pid:true},el:()=>$('[data-act="cq-send"]'),t:'AIに聞いてみる',b:'ボタン1つで、AIアプリに質問文が入ります。',act:()=>'cq-send',al:()=>'AIアプリに送る'}]};
 const TOUR_KEYS=['view','prep','karte','ai'];
 function toursSeen(){try{return JSON.parse(localStorage.getItem('tapscore-tours-seen')||'{}')||{};}catch(e){return {};}}
 function tourList(){const seen=toursSeen();
