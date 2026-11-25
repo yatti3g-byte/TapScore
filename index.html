@@ -501,6 +501,8 @@ details.more.home[open]{padding-bottom:12px}details.more.home .btn{margin-top:6p
 .consult .cqin{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);margin:8px 0 2px}
 .consult .cqtext{width:100%;box-sizing:border-box;font:inherit;font-size:13px;line-height:1.55;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);resize:vertical;margin:6px 0 8px}
 .consult .aimsg{min-height:1.3em;margin:6px 0 0;font-size:13px;font-weight:700;color:var(--accent)}
+.linebtn{flex:0 0 auto;margin-left:auto;background:#06c755;color:#fff;border:0;border-radius:999px;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;min-height:32px;white-space:nowrap;cursor:pointer}
+.gsub .linebtn{margin-left:0}
 </style>
 </head>
 <body>
@@ -1519,6 +1521,15 @@ function viewHome(){
   h+='<p class="foot">TapScore 0.27　'+(ui.local?'記録はこのスマホの中にだけ保存されます（サーバーには送りません）。':'記録はチームで共有されます。')+'</p>';
   return h;
 }
+// LINE速報：いまのスコア・回・走者・得点の入ったプレーを、LINEにそのまま貼れる文にする
+function lineText(g,S){const T=S.teams,d=g.date?md(g.date):'',n=Math.max(S.line[0].length,S.line[1].length,1);
+  const L=[(S.ended?'【試合終了】':'【速報】')+(d?d+' ':'')+(gameMemo(g)||'').trim(),T[0]+' '+S.R[0]+' − '+S.R[1]+' '+T[1]];
+  if(!S.ended)L.push(S.inn+'回'+(S.half?'裏':'表')+' '+S.outs+'アウト '+(RUNNERS[[1,2,3].filter(k=>S.bases[k]).join('')]||'')+'（攻撃：'+T[S.half]+'）');
+  L.push('');[0,1].forEach(t=>{const c=[];for(let i=0;i<n;i++){const v=lineCell(S,t,i);c.push(v===''?'-':v);}L.push(T[t]+' '+c.join(' ')+'｜'+S.R[t]);});
+  const sc=S.log.filter(e=>e.runs>0);if(sc.length){L.push('','得点');sc.forEach(e=>L.push(e.inn+'回'+(e.half?'裏':'表')+' '+(e.who?e.who+' ':'')+e.text+'（'+e.runs+'点）'));}
+  if(!S.ended){const last=[...S.log].reverse().find(e=>e.k==='pa');if(last)L.push('','直前の打席：'+last.inn+'回'+(last.half?'裏':'表')+' '+(last.who?last.who+' ':'')+last.text);}
+  L.push('','（TapScoreで記録 https://yatti3g-byte.github.io/TapScore/ ）');
+  return L.join('\n');}
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
   const last=Math.max(S.line[0].length,S.line[1].length,1);
   return (S.ended&&t===1&&i===last-1&&S.line[0][i]!=null&&S.R[1]>S.R[0])?'X':'';}
@@ -1931,8 +1942,8 @@ function viewGame(){
   if(ui.ins!=null&&ui.tab!=='score'&&!(ui.tab==='lineup'&&ui.luFrom==='score'))endInsert();
   const g0=games[ui.gid],g=ui.ins!=null?Object.assign({},g0,{ev:(g0.ev||[]).slice(0,ui.ins)}):g0;const S=replay(g);ui.S=S;
   const rec=ui.tab==='score',at=t=>(!S.ended&&S.half===t)?' class="atb"':'';
-  let h=rec?'<nav class="top"><button class="back" data-act="home" aria-label="'+esc(navLabel())+'へ戻る">‹</button><div class="mini" aria-label="'+esc(S.teams[0])+' '+S.R[0]+' 対 '+S.R[1]+' '+esc(S.teams[1])+'"><span'+at(0)+'>'+esc(S.teams[0])+'</span><b>'+S.R[0]+'</b><i>–</i><b>'+S.R[1]+'</b><span'+at(1)+'>'+esc(S.teams[1])+'</span></div></nav>'+banners()
-    :'<nav class="top"><button class="back" data-act="home">‹ '+esc(navLabel())+'</button><div class="gset"><span class="gmeta">'+esc(fmtDate(g.date))+(gameMemo(g)?'　'+esc(gameMemo(g)):'')+'</span><span class="gsub"><button class="savest" data-act="save-retry"></button><button class="gbtn" data-act="gset"'+(ui.canWrite?'':' disabled')+'>'+regInn(g)+'回制'+(ui.canWrite?'　<b>⚙ 試合の設定</b>':'')+'</button></span></div></nav>'+banners()+boardHTML(g,S);
+  let h=rec?'<nav class="top"><button class="back" data-act="home" aria-label="'+esc(navLabel())+'へ戻る">‹</button><div class="mini" aria-label="'+esc(S.teams[0])+' '+S.R[0]+' 対 '+S.R[1]+' '+esc(S.teams[1])+'"><span'+at(0)+'>'+esc(S.teams[0])+'</span><b>'+S.R[0]+'</b><i>–</i><b>'+S.R[1]+'</b><span'+at(1)+'>'+esc(S.teams[1])+'</span></div><button class="linebtn" data-act="line">LINE速報</button></nav>'+banners()
+    :'<nav class="top"><button class="back" data-act="home">‹ '+esc(navLabel())+'</button><div class="gset"><span class="gmeta">'+esc(fmtDate(g.date))+(gameMemo(g)?'　'+esc(gameMemo(g)):'')+'</span><span class="gsub"><button class="savest" data-act="save-retry"></button><button class="linebtn" data-act="line">LINE速報</button><button class="gbtn" data-act="gset"'+(ui.canWrite?'':' disabled')+'>'+regInn(g)+'回制'+(ui.canWrite?'　<b>⚙ 試合の設定</b>':'')+'</button></span></div></nav>'+banners()+boardHTML(g,S);
   const tabs=[['score',ui.canWrite?'記録':'速報'],['log','経過'],['stats','成績'],['lineup','打順']];
   h+='<div class="tabs" role="tablist">'+tabs.map(t=>'<button role="tab" data-act="tab" data-tab="'+t[0]+'" aria-selected="'+(ui.tab===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
   h+=ui.tab==='log'?logTab(g,S):ui.tab==='stats'?statsTab(g,S):ui.tab==='lineup'?lineupTab(g,S):scoreTab(g,S);
@@ -2275,6 +2286,10 @@ const acts={
   async share(){const g=games[ui.gid];if(!g)return;
     const code=await pack({id:ui.gid,g:{tbd:g.tbd,name:g.name,date:g.date,inn:g.inn,mode:g.mode,rt:g.rt,sp:g.sp,teams:g.teams,lu:g.lu,ev:g.ev,created:g.created,upd:g.upd}});
     ui.shareUrl=location.href.split('#')[0]+'#g='+code;openSheet('share');},
+  line(){const g=games[ui.gid];if(!g)return;const t=lineText(g,ui.S||replay(g));copyText(t);
+    // LINEの「送信先を選ぶ」画面を、文が入った状態で開く（スマホのLINEアプリ）。開けなくてもコピー済み
+    const w=window.open('https://line.me/R/share?text='+encodeURIComponent(t),'_blank');if(w){try{w.opener=null;}catch(e){}}
+    toast(w?'LINEを開きました（速報の文はコピー済み）':'速報の文をコピーしました。LINEに貼り付けてください');},
   'share-send'(){const S=ui.S;try{navigator.share({title:S.teams[0]+' '+S.R[0]+' – '+S.R[1]+' '+S.teams[1],url:ui.shareUrl}).catch(()=>{});}catch(e){}},
   'share-copy'(){const t=$('#sh-url');const done=()=>toast('リンクをコピーしました');
     try{navigator.clipboard.writeText(ui.shareUrl).then(done,()=>{t.focus();t.select();toast('リンクを長押ししてコピーしてください');});}
@@ -3122,6 +3137,7 @@ TOURS.subs={t:'選手交代',d:'代打・代走・守備交代・投手交代の
   {go:G('live','score'),el:()=>null,t:'選手交代は以上です',b:'間違えたときは、経過の交代の記録を押すと直せます。'}]};
 TOURS.after={t:'試合が終わったら',d:'試合の終え方・成績を送る・AIに相談・控えファイル',m:1,steps:[
   {go:G('live','score'),el:()=>$('[data-act="more"]'),t:'試合を終える',b:'コールドや時間切れのときは、「その他」→「試合を終了する」で理由を選びます。あとで取り消して再開もできます。'},
+  {go:G('done','stats'),el:()=>$('nav.top .linebtn'),t:'LINE速報',b:'スコアと得点の入ったプレーを、文が入った状態でLINEに送れます。試合中もいつでも使えます。'},
   {go:G('done','stats'),el:()=>$('.imgbtn'),t:'成績を画像で送る',b:'スコアと打撃・投手成績が1枚の画像になります。LINEなどで保護者に送れます。'},
   {go:G('done','stats'),el:()=>{const c=$('.consult');return c?[c.querySelector('h2'),c.querySelector('.chips')]:null;},t:'試合をAIに相談',b:'勝ち負けを分けた要因、先頭打者や四球からの失点、投手交代のタイミングを相談できます。'},
   {go:{v:'home'},el:()=>$('[data-act="backup"]'),t:'控えファイルを作る',b:'記録はスマホに自動で保存されています。ときどき控えファイルを作っておけば、スマホをなくしても戻せます。'},
