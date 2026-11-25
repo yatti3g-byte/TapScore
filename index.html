@@ -2514,12 +2514,12 @@ const TRB=[
   {k:'obp',l:'出塁率',f:'r3',num:g=>g.h+g.bb,den:g=>g.ab+g.bb+g.sf,unit:'打席',n:g=>g.pa,d:'安打と四死球で塁に出た割合'},
   {k:'kr',l:'三振率',f:'pct',num:g=>g.k,den:g=>g.pa,unit:'打席',n:g=>g.pa,d:'打席のうち三振の割合（低いほど良い）',low:true},
   {k:'whiff',l:'空振り率',f:'pct',num:g=>g.whiffs,den:g=>g.swings,unit:'スイング',n:g=>g.swings,d:'振ったうち空振りの割合（低いほど良い）。1球ずつ記録した試合だけ',low:true,pitch:true},
-  {k:'ppp',l:'1打席の球数',f:'n1',num:g=>g.pitches,den:g=>g.ppa,unit:'打席',n:g=>g.ppa,d:'1打席で投げさせた球数。粘れているか。1球ずつ記録した試合だけ',pitch:true},
+  {k:'ppp',l:'1打席あたりの投球数',f:'n1',num:g=>g.pitches,den:g=>g.ppa,unit:'打席',n:g=>g.ppa,d:'1打席で投げさせた球数。粘れているか。1球ずつ記録した試合だけ',pitch:true},
   {k:'avg',l:'打率',f:'r3',num:g=>g.h,den:g=>g.ab,unit:'打数',n:g=>g.ab,d:'少ない打数では偶然の差が大きい数字です'}];
 const TRP=[
   {k:'fps',l:'初球ストライク率',f:'pct',num:g=>g.fps,den:g=>g.fn,unit:'人',n:g=>g.fn,d:'投球を記録した打者のうち、初球がストライク（見逃し・空振り・ファウル・打球）だった割合',pitch:true},
   {k:'bbr',l:'四死球率',f:'pct',num:g=>g.bb,den:g=>g.bf,unit:'人',n:g=>g.bf,d:'対戦した打者のうち四死球の割合（低いほど良い）',low:true},
-  {k:'b3',l:'3ボール率',f:'pct',num:g=>g.b3,den:g=>g.fn,unit:'人',n:g=>g.fn,d:'3ボールまでいった打者の割合（低いほど良い）。1球ずつ記録した試合だけ',low:true,pitch:true}];
+  {k:'b3',l:'3ボールになった打者の割合',f:'pct',num:g=>g.b3,den:g=>g.fn,unit:'人',n:g=>g.fn,d:'3ボールまでいった打者の割合（低いほど良い）。1球ずつ記録した試合だけ',low:true,pitch:true}];
 const fmtV=(v,f)=>!isFinite(v)?'-':f==='pct'?Math.round(v*100)+'%':f==='n1'?v.toFixed(1):v.toFixed(3).replace(/^0/,'');
 function batSeries(pid){const by=new Map();
   playerPAs(pid).slice().reverse().forEach(a=>{let g=by.get(a.gid);if(!g){g={gid:a.gid,date:a.date,opp:a.opp,pa:0,ab:0,h:0,bb:0,sf:0,k:0,ppa:0,pitches:0,swings:0,whiffs:0};by.set(a.gid,g);}
@@ -2963,6 +2963,11 @@ let PRC=null;
 // 選手カルテで「Aチームだけ」などに絞っているとき、その区分の試合だけを数える
 const sqOK=L=>!(ui.pv&&ui.pv.sq)||L.sq===ui.pv.sq;
 function playerRows(pid){return playerRowsAll(pid).filter(r=>sqOK(r.L));}
+function appearGames(pid){const out=new Set();
+  Object.keys(games).forEach(id=>{const g=games[id],LL=gameLines(id);if(!g||!LL)return;LL.forEach(L=>{if(!sqOK(L))return;
+    const ids=((g.lu||[])[L.t]||[]).map(x=>x&&x.pid).concat((g.ev||[]).filter(e=>(e.t==='sub'||e.t==='add')&&e.tm===L.t).map(e=>e.pid));
+    if(ids.filter(Boolean).some(q=>rp(q)===pid))out.add(id);});});
+  return out.size;}
 function playerRowsAll(pid){
   const sig=ROSTER_V+'|'+Object.keys(games).map(id=>{const g=games[id];return id+':'+((g&&g.ev)||[]).length+':'+((g&&g.upd)||0);}).join(',');
   if(!PRC||PRC.sig!==sig){const m=new Map();
@@ -3020,7 +3025,9 @@ function playerDetail(pid){
   let h='<nav class="top"><button class="back" data-act="p-back">‹ '+esc(navLabel())+'</button><div class="gtitle">'+esc(teamLabel(t.id))+(PV.sq?'・'+esc(PV.sq):'')+'</div></nav>';
   h+=sqFilter(t.id);
   const nh=numberHistory(pid);
-  h+='<div class="phead"><span class="no">'+esc(digits(p.number)!==''?digits(p.number):'-')+'</span><div><h1>'+esc(p.name)+'</h1><p>'+(p.nick?esc(p.nick)+'　':'')+(p.left?'退団・卒団　':'')+rows.length+'試合に出場</p>'+
+  h+='<div class="phead"><span class="no">'+esc(digits(p.number)!==''?digits(p.number):'-')+'</span><div><h1>'+esc(p.name)+'</h1><p>'+(p.nick?esc(p.nick)+'　':'')+(p.left?'退団・卒団　':'')+(()=>{const ap=Math.max(appearGames(pid),new Set(rows.map(r=>r.id)).size),bg=rows.filter(r=>r.b&&r.b.pa).length,pg=rows.filter(r=>r.p&&(r.p.outs||r.p.np||r.p.h||r.p.bb||r.p.r)).length;
+      // 出場試合（スタメン・途中出場）と、打席があった試合・登板した試合を分けて出す（守備だけの出場もある）
+      return ap+'試合に出場'+(ap>bg||pg?'（打席あり'+bg+'試合'+(pg?'・登板'+pg+'試合':'')+'）':'');})()+'</p>'+
     (nh.length>1?'<p class="nhist">背番号：'+nh.map(x=>esc(x.no)+'（'+md(x.from)+(x.to!==x.from?'〜'+md(x.to):'')+'）').join(' → ')+'</p>':'')+'</div></div>';
   const story=c.sample&&pid===storyPid()&&hasStory(),ins=story?storyInsight(pid):'';
   // 今の課題
@@ -3039,7 +3046,7 @@ function playerDetail(pid){
   if(!bat.length)h+='<p class="empty">まだ打席の記録がありません。</p>';
   else{const up=bat.length>5&&isFinite(recent.avg)&&isFinite(s.avg)&&recent.avg>s.avg;
     h+='<div class="tiles">'+tile(fr(s.avg),'打率')+tile(fr(s.obp),'出塁率')+tile(fr(s.ops),'OPS')+tile(s.h,'安打')+tile(s.rbi,'打点')+tile(s.bb+s.hbp,'四死球')+tile(s.sb,'盗塁')+tile(pct(s.kr),'三振率')+'</div>'+
-      '<p class="hint">'+s.g+'試合 '+s.pa+'打席 '+s.ab+'打数。直近'+Math.min(5,bat.length)+'試合の打率は <b>'+fr(recent.avg)+'</b>'+(up?'（上り調子）':'')+'。</p>';
+      '<p class="hint">'+s.g+'試合 '+s.pa+'打席 '+s.ab+'打数。直近'+Math.min(5,bat.length)+'試合の打率は <b>'+fr(recent.avg)+'</b>（'+recent.ab+'打数'+(up?'。通算を上回っています':'')+'）。</p>';
     h+='<h2>打撃の推移</h2>'+trendHTML('bat',pid,goalPeriods(p));}
   if(pit.length){const q=sumPit(pit.map(r=>r.p));
     h+='<h2>投手（通算）</h2><div class="tiles">'+tile(fmtIP(q.outs),'投球回')+tile(q.np||'-','球数')+tile(f2(q.era),'防御率')+tile(f2(q.kr),'奪三振率')+'</div>'+
@@ -3097,7 +3104,7 @@ const TOURS={
  karte:{t:'選手カルテ',d:'選手ごとの通算成績・試合ごとの記録・今の課題',m:1,steps:[
   {go:{v:'home'},el:()=>$('[data-act="players"]'),t:'選手カルテ',b:'名簿の選手ごとに、全試合の成績が貯まります。試合の「打順」で名簿のチームを選んだ試合が入ります。'},
   {go:{v:'players'},el:()=>$('.pgrid'),t:'選手の一覧',b:'背番号・名前・出場試合数・打率と、課題があるかがわかります。押すと、その選手のページを開きます。'},
-  {go:{v:'players',pid:true},el:()=>[$('.phead'),$('.tiles')].filter(Boolean),t:'通算の成績',b:'打率・出塁率・OPSなどの通算と、直近5試合の打率です。直近が通算より良ければ「上り調子」と出ます。'},
+  {go:{v:'players',pid:true},el:()=>[$('.phead'),$('.tiles')].filter(Boolean),t:'通算の成績',b:'打率・出塁率・OPSなどの通算と、直近5試合の打率です。直近の打率には打数も出ます。少ない打数の差は偶然のこともあります。'},
   {go:{v:'players',pid:true},el:()=>$('.trend'),t:'成長の推移',b:'試合ごとの点と、直近3試合をまとめた線で、出塁率・三振率・空振り率などの変化を見ます。点を押すと、その試合の値と打席数が出ます。'},
   {go:{v:'players',pid:true},el:()=>$('.goal'),t:'今の課題',b:'次に取り組むことを書いておけます。書きかえても前の課題は期間といっしょに残り、推移のグラフに取り組み始めた日の縦線が出ます。'},
   {go:{v:'players',pid:true},el:()=>$('.krows'),t:'試合ごとの記録',b:'日付・相手・成績・打席の内容です。行を押すと、その試合を開きます。'},
