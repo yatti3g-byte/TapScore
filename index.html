@@ -1521,14 +1521,20 @@ function viewHome(){
   h+='<p class="foot">TapScore 0.27　'+(ui.local?'記録はこのスマホの中にだけ保存されます（サーバーには送りません）。':'記録はチームで共有されます。')+'</p>';
   return h;
 }
-// LINE速報：いまのスコア・回・走者・得点の入ったプレーを、LINEにそのまま貼れる文にする
-function lineText(g,S){const T=S.teams,d=g.date?md(g.date):'',n=Math.max(S.line[0].length,S.line[1].length,1);
-  const L=[(S.ended?'【試合終了】':'【速報】')+(d?d+' ':'')+(gameMemo(g)||'').trim(),T[0]+' '+S.R[0]+' − '+S.R[1]+' '+T[1]];
-  if(!S.ended)L.push(S.inn+'回'+(S.half?'裏':'表')+' '+S.outs+'アウト '+(RUNNERS[[1,2,3].filter(k=>S.bases[k]).join('')]||'')+'（攻撃：'+T[S.half]+'）');
+// LINE速報：自チームの情報を中心に（スコア・回・自チームの得点の入ったプレー・自チームの直前の打席／投手の球数）
+// 自チーム：名簿をつないだ側。わからないときは両チームを同じように扱う
+function ownSideOf(g){const rt=g.rt||[];if(rt[0]&&!rt[1])return 0;if(rt[1]&&!rt[0])return 1;
+  let on='';try{on=ownName(prefs().team);}catch(e){}const T=g.teams||[];if(on){if(T[0]===on&&T[1]!==on)return 0;if(T[1]===on&&T[0]!==on)return 1;}return null;}
+function lineText(g,S){const T=S.teams,d=g.date?md(g.date):'',n=Math.max(S.line[0].length,S.line[1].length,1),me=ownSideOf(g),HS=e=>e.inn+'回'+(e.half?'裏':'表');
+  const mine=me==null?[0,1]:[me],opp=me==null?null:1-me;
+  // スコアは両チーム（先攻・後攻の順）。終わった試合は自チームの勝ち負けも
+  const L=[(S.ended?'【試合終了】':'【速報】')+(d?d+' ':'')+(gameMemo(g)||'').trim()];
+  L.push(T[0]+' '+S.R[0]+' − '+S.R[1]+' '+T[1]+(S.ended&&me!=null?'（'+(S.R[me]>S.R[opp]?'勝ち':S.R[me]<S.R[opp]?'負け':'引き分け')+'）':''));
+  if(!S.ended){const bat=S.half;L.push(S.inn+'回'+(S.half?'裏':'表')+' '+S.outs+'アウト '+(RUNNERS[[1,2,3].filter(k=>S.bases[k]).join('')]||'')+(me==null?'（攻撃：'+T[bat]+'）':bat===me?'（攻撃中）':'（守備中）'));
+    if(me!=null&&bat!==me&&S.pitcher)L.push('投手 '+S.pitcher+' '+S.np+'球');}
   L.push('');[0,1].forEach(t=>{const c=[];for(let i=0;i<n;i++){const v=lineCell(S,t,i);c.push(v===''?'-':v);}L.push(T[t]+' '+c.join(' ')+'｜'+S.R[t]);});
-  const sc=S.log.filter(e=>e.runs>0);if(sc.length){L.push('','得点');sc.forEach(e=>L.push(e.inn+'回'+(e.half?'裏':'表')+' '+(e.who?e.who+' ':'')+e.text+'（'+e.runs+'点）'));}
-  if(!S.ended){const last=[...S.log].reverse().find(e=>e.k==='pa');if(last)L.push('','直前の打席：'+last.inn+'回'+(last.half?'裏':'表')+' '+(last.who?last.who+' ':'')+last.text);}
-  L.push('','（TapScoreで記録 https://yatti3g-byte.github.io/TapScore/ ）');
+  const sc=S.log.filter(e=>e.runs>0&&mine.includes(e.half));if(sc.length){L.push('','得点');sc.forEach(e=>L.push(HS(e)+' '+(e.who?e.who+' ':'')+e.text+'（'+e.runs+'点）'));}
+  if(!S.ended){const last=[...S.log].reverse().find(e=>e.k==='pa'&&mine.includes(e.half));if(last)L.push('','直前の打席：'+HS(last)+' '+(last.who?last.who+' ':'')+last.text);}
   return L.join('\n');}
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
   const last=Math.max(S.line[0].length,S.line[1].length,1);
@@ -3137,7 +3143,7 @@ TOURS.subs={t:'選手交代',d:'代打・代走・守備交代・投手交代の
   {go:G('live','score'),el:()=>null,t:'選手交代は以上です',b:'間違えたときは、経過の交代の記録を押すと直せます。'}]};
 TOURS.after={t:'試合が終わったら',d:'試合の終え方・成績を送る・AIに相談・控えファイル',m:1,steps:[
   {go:G('live','score'),el:()=>$('[data-act="more"]'),t:'試合を終える',b:'コールドや時間切れのときは、「その他」→「試合を終了する」で理由を選びます。あとで取り消して再開もできます。'},
-  {go:G('done','stats'),el:()=>$('nav.top .linebtn'),t:'LINE速報',b:'スコアと得点の入ったプレーを、文が入った状態でLINEに送れます。試合中もいつでも使えます。'},
+  {go:G('done','stats'),el:()=>$('nav.top .linebtn'),t:'LINE速報',b:'スコアと、自チームの得点の入ったプレーを、文が入った状態でLINEに送れます。試合中もいつでも使えます。'},
   {go:G('done','stats'),el:()=>$('.imgbtn'),t:'成績を画像で送る',b:'スコアと打撃・投手成績が1枚の画像になります。LINEなどで保護者に送れます。'},
   {go:G('done','stats'),el:()=>{const c=$('.consult');return c?[c.querySelector('h2'),c.querySelector('.chips')]:null;},t:'試合をAIに相談',b:'勝ち負けを分けた要因、先頭打者や四球からの失点、投手交代のタイミングを相談できます。'},
   {go:{v:'home'},el:()=>$('[data-act="backup"]'),t:'控えファイルを作る',b:'記録はスマホに自動で保存されています。ときどき控えファイルを作っておけば、スマホをなくしても戻せます。'},
