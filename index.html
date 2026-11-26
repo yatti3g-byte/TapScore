@@ -35,7 +35,7 @@
   :root:not([data-theme="light"]){
     --paper:#141a16; --surface:#1e2721; --ink:#e8ede9; --muted:#98a49b; --line:#33423a; --accent2:#25382c; --wn:#3a3418;
     --grass:#2f6444; --grass-in:#38724f; --dirt:#927851;
-    --accent:#58b87e; --accent-ink:#ffffff;
+    --accent:#58b87e; --accent-ink:#14201c;
     --lamp-b:#3cc063; --lamp-s:#f0c21a; --lamp-o:#ef5a44; --hit:#ff7a66;
     color-scheme:dark;
   }
@@ -43,7 +43,7 @@
 :root[data-theme="dark"]{
   --paper:#141a16; --surface:#1e2721; --ink:#e8ede9; --muted:#98a49b; --line:#33423a; --accent2:#25382c; --wn:#3a3418;
   --grass:#2f6444; --grass-in:#38724f; --dirt:#927851;
-  --accent:#58b87e; --accent-ink:#ffffff;
+  --accent:#58b87e; --accent-ink:#14201c;
   --lamp-b:#3cc063; --lamp-s:#f0c21a; --lamp-o:#ef5a44; --hit:#ff7a66;
   color-scheme:dark;
 }
@@ -416,7 +416,7 @@ h2,.rv h2{font-weight:700;font-size:16px}
 .pcard.gone{opacity:.7}.pcard.gone .no{background:var(--paper);color:var(--muted)}
 .top .gtitle{flex:1;min-width:0;text-align:right;color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .phead{display:flex;gap:12px;align-items:center;margin:10px 0 12px}
-.phead .no{display:grid;place-items:center;min-width:56px;height:56px;border-radius:14px;background:var(--accent);color:#fff;font-weight:800;font-size:24px}
+.phead .no{display:grid;place-items:center;min-width:56px;height:56px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:24px}
 .phead h1{margin:0;font-size:24px}.phead p{margin:0;color:var(--muted);font-size:14px}
 .goal{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin:0 0 10px}
 .goal p{margin:0;white-space:pre-wrap}.goal textarea{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:8px;resize:vertical}
@@ -503,6 +503,8 @@ details.more.home[open]{padding-bottom:12px}details.more.home .btn{margin-top:6p
 .consult .aimsg{min-height:1.3em;margin:6px 0 0;font-size:13px;font-weight:700;color:var(--accent)}
 .linebtn{flex:0 0 auto;margin-left:auto;background:#06c755;color:#fff;border:0;border-radius:999px;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;min-height:32px;white-space:nowrap;cursor:pointer}
 .gsub .linebtn{margin-left:0}
+.foot a{color:var(--accent);font-weight:700;text-decoration:none}
+@media (max-width:380px){.filebtn{font-size:14px;letter-spacing:-.02em}}
 </style>
 </head>
 <body>
@@ -1487,7 +1489,7 @@ function gameCard(id,cls){
     (ui.canWrite&&cls!=='hero'&&ui.delMode?'<button class="gdel" data-act="del" data-id="'+esc(id)+'" aria-label="'+esc(S.teams[0]+' 対 '+S.teams[1])+' を削除">削除</button>':'')+'</li>';}
 // トップ画面：刺さる機能（記録中の試合・新しい試合・選手カルテ）ほど上に大きく、使う回数の少ないものは下の「そのほか」に畳む
 function viewHome(){
-  let h='<header class="mast"><button class="savest" data-act="save-retry"></button><h1>⚾ TapScore</h1><p>野球のスコアを、スマホのタップで記録する</p></header>'+banners();
+  let h='<header class="mast"><button class="savest" data-act="save-retry"></button><h1>TapScore</h1><p>野球のスコアを、スマホのタップで記録する</p></header>'+banners();
   h+=backupNote();
   const ids=Object.keys(games).sort((a,b)=>(games[b].created||0)-(games[a].created||0));
   const live=ui.loading?[]:ids.filter(id=>{const g=games[id];if(!(g.ev||[]).length)return false;return !replayRO(g).ended;});
@@ -1515,10 +1517,10 @@ function viewHome(){
       (ui.local?'<div class="row"><button class="btn filebtn" data-act="backup">控えファイルを作る<small>全試合と名簿を1つのファイルに</small></button><label class="btn filebtn" for="fin">ファイルを開く<small>控えファイル・送られてきた試合・名簿</small></label><input id="fin" type="file" accept=".json,.html,.htm,.csv,.txt,application/json,text/html,text/csv" hidden></div>':'')+
       '<details class="more home"><summary>そのほか</summary>'+
         (sampleCount()?'<button class="link danger" data-act="sample-del">サンプルの試合と名簿を消す</button>':'')+
-        '<a class="link coffee" href="https://buymeacoffee.com/formnote" target="_blank" rel="noopener">☕ TapScoreを応援する（Buy Me a Coffee）</a>'+
+        '<a class="link coffee" href="https://buymeacoffee.com/formnote" target="_blank" rel="noopener">☕ DugoutToolsを応援する（Buy Me a Coffee）</a>'+
       '</details>';}
   h+='<div class="row helprow"><button class="btn" data-act="tours">チュートリアル</button><a class="btn helpl2" href="help.html">使い方・Q&A</a></div>';
-  h+='<p class="foot">TapScore 0.27　'+(ui.local?'記録はこのスマホの中にだけ保存されます（サーバーには送りません）。':'記録はチームで共有されます。')+'</p>';
+  h+='<p class="foot">TapScore 0.27　'+(ui.local?'記録はこのスマホの中にだけ保存されます（サーバーには送りません）。':'記録はチームで共有されます。')+'<br>'+sibLine()+'</p>';
   return h;
 }
 // LINE速報：自チームの情報を中心に（スコア・回・自チームの得点の入ったプレー・自チームの直前の打席／投手の球数）
@@ -1536,6 +1538,8 @@ function lineText(g,S){const T=S.teams,d=g.date?md(g.date):'',n=Math.max(S.line[
   const sc=S.log.filter(e=>e.runs>0&&mine.includes(e.half));if(sc.length){L.push('','得点');sc.forEach(e=>L.push(HS(e)+' '+(e.who?e.who+' ':'')+e.text+'（'+e.runs+'点）'));}
   if(!S.ended){const last=[...S.log].reverse().find(e=>e.k==='pa'&&mine.includes(e.half));if(last)L.push('','直前の打席：'+HS(last)+' '+(last.who?last.who+' ':'')+last.text);}
   return L.join('\n');}
+const SIBS=[['FormNote','https://yatti3g-byte.github.io/form-note/','フォームの確認'],['PitchCount','https://yatti3g-byte.github.io/PitchCount/','球数の管理'],['ShotFind','https://yatti3g-byte.github.io/ShotFind/','わが子の写真探し']];
+const sibLine=()=>'DugoutTools のアプリ：'+SIBS.map(x=>'<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>（'+x[2]+'）').join('・');
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
   const last=Math.max(S.line[0].length,S.line[1].length,1);
   return (S.ended&&t===1&&i===last-1&&S.line[0][i]!=null&&S.R[1]>S.R[0])?'X':'';}
@@ -1770,7 +1774,7 @@ function resultDocHTML(id,g){
   const data=JSON.stringify({app:'TapScore',v:1,id,g}).replace(/</g,'\\u003c');
   let body='<main id="main" class="saved"><header class="mast"><h1>'+esc(title)+'</h1><p>'+esc(M.meta)+'</p></header>'+boardHTML(g,S)+decHTML(S);
   [0,1].forEach(t=>{body+='<h2 class="teamhead">'+(t?'後攻':'先攻')+'　'+esc(S.teams[t])+'</h2><div class="rv">'+teamBody(S,M,t,true)+'</div>';});
-  body+='<p class="foot">TapScore で記録。このファイルは TapScore の「HTMLを読み込む」で読み込むと、記録の訂正や続きの入力ができます。</p></main>';
+  body+='<p class="foot">TapScore で記録。このファイルは TapScore のトップ画面の「ファイルを開く」で開くと、記録の訂正や続きの入力ができます。</p></main>';
   const js='const fitAll='+fitAll.toString()+';addEventListener("load",fitAll);addEventListener("resize",fitAll);';
   return '<!DOCTYPE html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="generator" content="TapScore">'+
     '<title>'+esc(title+'（'+fmtDate(g.date)+'）')+'</title>'+
@@ -2048,7 +2052,7 @@ function renderSheet(){
       '<div class="grid3 big">'+resBtn('1B',S,'hitb')+resBtn('GO',S)+resBtn('FO',S)+'</div><button class="btn" data-act="sheet-close">やめる</button>';
   }else if(ui.sheet==='plim'){const cur=+(games[ui.gid]||{}).plim||0;
     h+='<h3>投球数の上限（1人の投手）</h3><div class="chips">'+[0,50,60,70,80,100].map(v=>'<button class="chip'+(cur===v?' on':'')+'" data-act="pl-set" data-v="'+v+'">'+(v?v+'球':'なし')+'</button>').join('')+'</div>'+
-      '<p class="sum">上限まであと10球になると残りの球数を、超えると超えた球数を出します。次の試合にも引き継ぎます。同じ日の別の試合で投げた球数は数えません。</p><button class="btn" data-act="sheet-close">閉じる</button>';
+      '<p class="sum">上限まであと10球になると残りの球数を、超えると超えた球数を出します。次の試合にも引き継ぎます。同じ日の別の試合で投げた球数は数えません。1日・1週間の上限や、次にいつ投げられるかは <a href="https://yatti3g-byte.github.io/PitchCount/" target="_blank" rel="noopener">PitchCount</a> で管理できます。</p><button class="btn" data-act="sheet-close">閉じる</button>';
   }else if(ui.sheet==='tours'){
     h+='<h3>チュートリアル</h3><p class="sum">サンプルの試合と名簿を使って案内します（ないときは自動で入れます。トップ画面の「サンプルの試合と名簿を消す」でまとめて消せます）。</p>'+tourList()+'<button class="btn" data-act="sheet-close">閉じる</button>';
   }else if(ui.sheet==='dpk'){
@@ -2114,7 +2118,7 @@ function renderSheet(){
       '<h4>入力のしかた</h4><div class="chips">'+[['pitch','1球ごと'],['pa','打席の結果だけ']].map(x=>'<button class="chip'+(d.mode===x[0]?' on':'')+'" data-act="gs-mode" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'+
       '<p class="sum">試合の途中でも切りかえられます。「打席の結果だけ」で入れた打席は、投球数に入りません。</p>'+
       '<h4>投球数の上限（1人の投手）</h4><div class="chips">'+[0,50,60,70,80,100].map(v=>'<button class="chip'+(d.plim===v?' on':'')+'" data-act="gs-plim" data-v="'+v+'">'+(v?v+'球':'なし')+'</button>').join('')+'</div>'+
-      '<p class="sum">記録画面に、上限まであと10球になると残りの球数を、超えると超えた球数を出します。次の試合にも引き継ぎます。同じ日の別の試合で投げた球数は数えないので、合わせて確認してください。</p>'+
+      '<p class="sum">記録画面に、上限まであと10球になると残りの球数を、超えると超えた球数を出します。次の試合にも引き継ぎます。同じ日の別の試合で投げた球数は数えないので、合わせて確認してください。1日・1週間の上限や、次にいつ投げられるかは <a href="https://yatti3g-byte.github.io/PitchCount/" target="_blank" rel="noopener">PitchCount</a> で管理できます。</p>'+
       '<label class="fld" for="gs-away"><span>'+(games[ui.gid].tbd?'自チーム（先攻・後攻は未定）':'先攻チーム')+'</span><input id="gs-away" maxlength="20" value="'+esc(d.t0)+'"></label>'+
       '<label class="fld" for="gs-home"><span>'+(games[ui.gid].tbd?'相手チーム':'後攻チーム')+'</span><input id="gs-home" maxlength="20" value="'+esc(d.t1)+'"></label>'+
       (!(games[ui.gid].ev||[]).length?'<button class="btn" data-act="gs-swap">先攻・後攻を入れかえる</button>':'')+
