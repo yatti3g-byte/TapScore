@@ -17,7 +17,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%E2%9A%BE%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 /* Brand: same palette, type and components as the スコアブック読み取り app (warm off-white page, white cards,
    green primary, system Japanese sans). Ball/strike/out lamps keep baseball's own green/yellow/red. */
@@ -133,7 +134,7 @@ button{cursor:pointer}
 .tok text{font-family:var(--font-body);font-weight:700;font-size:12px;text-anchor:middle;pointer-events:none}
 .tok.fld circle{fill:#fff;stroke:#14251d;stroke-width:1.5} .tok.fld text{fill:#14251d}
 .tok.run{touch-action:none;cursor:grab}
-.tok.run circle{fill:var(--accent);stroke:#2a2104;stroke-width:1.5} .tok.run text{fill:#2a2104}
+.tok.run circle{fill:var(--accent);stroke:#2a2104;stroke-width:1.5}
 .tok.bat circle{fill:#14251d;stroke:#fff;stroke-width:1.5} .tok.bat text{fill:#fff}
 .placing .tok.fld{cursor:grab}
 .placing .tok.fld circle{stroke:var(--accent);stroke-width:3}
@@ -381,7 +382,7 @@ h2,.rv h2{font-weight:700;font-size:16px}
 .mini b{font-weight:700}
 .mini span.atb{color:var(--accent);font-weight:700}
 .mini i{color:var(--muted)}
-.tok.run circle{fill:var(--accent);stroke:#fff}.tok.run text{fill:#fff}
+.tok.run circle{fill:var(--accent);stroke:#fff}.tok.run text{fill:var(--accent-ink)}
 .place{border-left-color:var(--accent)}
 .rv{--ac2:var(--accent2)}
 #toast{background:var(--ink);color:var(--paper)}
@@ -400,7 +401,7 @@ h2,.rv h2{font-weight:700;font-size:16px}
 #tour .tcard .link{color:#fff;opacity:.85}
 #tour .tcard h3{margin:0 0 4px;font-size:17px}
 #tour .tcard p{margin:0 0 10px;font-size:15px;line-height:1.65}
-#tour .tcard .tn{float:right;font-size:13px;color:var(--accent-ink);opacity:.8;font-weight:700}
+#tour .tcard .tn{float:right;font-size:13px;color:#fff;opacity:.8;font-weight:700}
 #tour .tbar{display:flex;align-items:center;gap:8px}
 #tour .tbar .link{margin-right:auto}
 #tour .tbar .btn{min-height:44px;padding:8px 16px}
@@ -1208,7 +1209,7 @@ function importReaderFile(file){
       return;
     }
     let out;try{out=readerToGame(parseReaderHTML(text));}
-    catch(e){toast('TapScoreで保存したHTMLを選んでください');return;}
+    catch(e){toast('開けないファイルでした。TapScoreの控えファイルか、TapScoreで保存した試合のファイルを選んでください');return;}
     const id=newId();games[id]=out.g;ui.gid=id;ui.tab='log';ui.redo=[];ui.luDraft=null;ui.mode='idle';save(id);
     ui.impWarn=out.warn;render();openSheet('imp');window.scrollTo(0,0);
   };
@@ -1539,7 +1540,7 @@ function lineText(g,S){const T=S.teams,d=g.date?md(g.date):'',n=Math.max(S.line[
   if(!S.ended){const last=[...S.log].reverse().find(e=>e.k==='pa'&&mine.includes(e.half));if(last)L.push('','直前の打席：'+HS(last)+' '+(last.who?last.who+' ':'')+last.text);}
   return L.join('\n');}
 const SIBS=[['FormNote','https://yatti3g-byte.github.io/form-note/','フォームの確認'],['PitchCount','https://yatti3g-byte.github.io/PitchCount/','球数の管理'],['ShotFind','https://yatti3g-byte.github.io/ShotFind/','わが子の写真探し']];
-const sibLine=()=>'DugoutTools のアプリ：'+SIBS.map(x=>'<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>（'+x[2]+'）').join('・');
+const sibLine=()=>'DugoutToolsのアプリ：'+SIBS.map(x=>'<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>（'+x[2]+'）').join('・');
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
   const last=Math.max(S.line[0].length,S.line[1].length,1);
   return (S.ended&&t===1&&i===last-1&&S.line[0][i]!=null&&S.R[1]>S.R[0])?'X':'';}
@@ -1861,13 +1862,136 @@ function drawResult(x,M,dryAll){
     if(!T.pit.length)para('まだ投球がありません。');else{table(PTH,T.pit,[92,40,40,32,32,32,32,32,32,32,42,42],11);para(M.pnote);
       if(T.pc){y+=4;para('回ごとの投球数');table([''].concat(T.pc.inn.map((_,i)=>(i+1)+'回')),[['その回の球数'].concat(T.pc.inn),['投手ごとの累計'].concat(T.pc.cum)],[92].concat(T.pc.inn.map(()=>40)),11);para(PCN);};}
   });});
-  txt('TapScore で記録',W-14,y+8,{s:11,c:C.mu,a:'right'});y+=24;
+  y+=10;
   return y;
+}
+/* 共有する画像の下に「アプリ名・URL・QRコード」の帯を付ける（FormNote の withCredit・qrMatrix と同じ作り） */
+const APP_URL='https://yatti3g-byte.github.io/TapScore/',APP_HINT='QRコードを読み取ってアプリを開く';
+/* QRコード生成（外部ライブラリなし）。バイトモード・誤り訂正L・バージョン1〜4（URL 78文字まで）。収まらない場合は null */
+function qrMatrix(text){
+  const data=Array.from(new TextEncoder().encode(text));
+  const CAP={1:[19,7],2:[34,10],3:[55,15],4:[80,20]};
+  let ver=0;
+  for(const v of [1,2,3,4]){if(data.length<=CAP[v][0]-2){ver=v;break}}
+  if(!ver)return null;
+  const dcw=CAP[ver][0],ecn=CAP[ver][1],bits=[];
+  const put=(v,n)=>{for(let i=n-1;i>=0;i--)bits.push((v>>i)&1)};
+  put(4,4);put(data.length,8);data.forEach(b=>put(b,8));
+  put(0,Math.min(4,dcw*8-bits.length));
+  while(bits.length%8)bits.push(0);
+  for(let p=0;bits.length<dcw*8;p++)put(p%2?0x11:0xEC,8);
+  const cw=[];
+  for(let i=0;i<bits.length;i+=8){let b=0;for(let j=0;j<8;j++)b=(b<<1)|bits[i+j];cw.push(b)}
+  const exp=new Array(512),log=new Array(256);
+  let xv=1;
+  for(let i=0;i<255;i++){exp[i]=xv;log[xv]=i;xv<<=1;if(xv&256)xv^=0x11D}
+  for(let i=255;i<512;i++)exp[i]=exp[i-255];
+  const mul=(a,b)=>a&&b?exp[log[a]+log[b]]:0;
+  let g=[1];
+  for(let i=0;i<ecn;i++){const ng=new Array(g.length+1).fill(0);for(let j=0;j<g.length;j++){ng[j]^=g[j];ng[j+1]^=mul(g[j],exp[i])}g=ng}
+  const ec=new Array(ecn).fill(0);
+  for(const d of cw){const f=d^ec[0];ec.shift();ec.push(0);for(let j=0;j<ecn;j++)ec[j]^=mul(g[j+1],f)}
+  const all=cw.concat(ec);
+  const N=17+4*ver,M=[],F=[];
+  for(let i=0;i<N;i++){M.push(new Array(N).fill(false));F.push(new Array(N).fill(false))}
+  const set=(r,c,v)=>{M[r][c]=v;F[r][c]=true};
+  const finder=(r,c)=>{for(let i=-1;i<=7;i++)for(let j=-1;j<=7;j++){
+    const rr=r+i,cc=c+j;if(rr<0||cc<0||rr>=N||cc>=N)continue;
+    set(rr,cc,(i>=0&&i<=6&&(j===0||j===6))||(j>=0&&j<=6&&(i===0||i===6))||(i>=2&&i<=4&&j>=2&&j<=4))}};
+  finder(0,0);finder(0,N-7);finder(N-7,0);
+  for(let i=8;i<N-8;i++){set(6,i,i%2===0);set(i,6,i%2===0)}
+  if(ver>=2){const p=4*ver+10;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)set(p+i,p+j,Math.max(Math.abs(i),Math.abs(j))!==1)}
+  for(let i=0;i<9;i++){if(i!==6){F[8][i]=true;F[i][8]=true}}
+  for(let i=0;i<8;i++){F[8][N-1-i]=true;F[N-1-i][8]=true}
+  set(N-8,8,true);
+  const maskFn=[(r,c)=>(r+c)%2===0,(r,c)=>r%2===0,(r,c)=>c%3===0,(r,c)=>(r+c)%3===0,
+    (r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0,(r,c)=>(r*c)%2+(r*c)%3===0,
+    (r,c)=>((r*c)%2+(r*c)%3)%2===0,(r,c)=>((r*c)%3+(r+c)%2)%2===0];
+  const build=m=>{
+    const Q=M.map(r=>r.slice());
+    let inc=-1,row=N-1,bi=7,by=0;
+    for(let col=N-1;col>0;col-=2){
+      if(col===6)col--;
+      for(;;){
+        for(let c=0;c<2;c++){
+          if(!F[row][col-c]){
+            let d=by<all.length?((all[by]>>bi)&1)===1:false;
+            if(maskFn[m](row,col-c))d=!d;
+            Q[row][col-c]=d;bi--;if(bi<0){by++;bi=7}
+          }
+        }
+        row+=inc;
+        if(row<0||row>=N){row-=inc;inc=-inc;break}
+      }
+    }
+    const d5=(1<<3)|m;let r=d5<<10;
+    for(let i=14;i>=10;i--)if((r>>i)&1)r^=0x537<<(i-10);
+    const fb=(((d5<<10)|r)^0x5412);
+    for(let i=0;i<15;i++){
+      const v=((fb>>i)&1)===1;
+      if(i<6)Q[i][8]=v;else if(i<8)Q[i+1][8]=v;else Q[N-15+i][8]=v;
+      if(i<8)Q[8][N-i-1]=v;else if(i<9)Q[8][15-i]=v;else Q[8][15-i-1]=v;
+    }
+    Q[N-8][8]=true;
+    return Q;
+  };
+  const penalty=Q=>{
+    let p=0;
+    for(let t=0;t<2;t++){
+      for(let a=0;a<N;a++){
+        let run=1;
+        for(let b=1;b<N;b++){
+          const cur=t?Q[b][a]:Q[a][b],prev=t?Q[b-1][a]:Q[a][b-1];
+          if(cur===prev){run++;if(run===5)p+=3;else if(run>5)p++}else run=1;
+        }
+      }
+    }
+    for(let r=0;r<N-1;r++)for(let c=0;c<N-1;c++){const v=Q[r][c];if(v===Q[r][c+1]&&v===Q[r+1][c]&&v===Q[r+1][c+1])p+=3}
+    const pat=[true,false,true,true,true,false,true];
+    for(let r=0;r<N;r++)for(let c=0;c<N-6;c++){
+      for(let t=0;t<2;t++){
+        let ok=true;
+        for(let k=0;k<7&&ok;k++){const v=t?Q[c+k][r]:Q[r][c+k];if(v!==pat[k])ok=false}
+        if(ok)p+=40;
+      }
+    }
+    let dark=0;for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(Q[r][c])dark++;
+    p+=Math.floor(Math.abs(dark*100/(N*N)-50)/5)*10;
+    return p;
+  };
+  let best=null,bp=1e9;
+  for(let m=0;m<8;m++){const Q=build(m),p=penalty(Q);if(p<bp){bp=p;best=Q}}
+  return best;
+}
+function withCredit(o){
+  const bh=Math.round(Math.max(200,o.width*0.2)),c=document.createElement('canvas');
+  c.width=o.width;c.height=o.height+bh;
+  const x=c.getContext('2d');x.drawImage(o,0,0);
+  x.fillStyle='#14201c';x.fillRect(0,o.height,c.width,bh);
+  const full=APP_URL,u=full.replace(/^https?:\/\//,''),pad=Math.round(bh*0.16),font='"Hiragino Sans","Noto Sans JP",system-ui,sans-serif';
+  let textMax=o.width-pad*2;
+  const q=qrMatrix(full);
+  if(q){
+    const n=q.length,m=Math.max(2,Math.floor(bh*0.9/(n+6))),side=m*(n+6);
+    const qx=o.width-pad-side,qy=o.height+Math.round((bh-side)/2);
+    x.fillStyle='#ffffff';x.fillRect(qx,qy,side,side);
+    x.fillStyle='#000000';
+    for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q[r][k])x.fillRect(qx+(k+3)*m,qy+(r+3)*m,m,m);
+    textMax=qx-pad*2;
+  }
+  const fit=(t,size,weight)=>{x.font=weight+' '+size+'px '+font;while(x.measureText(t).width>textMax&&size>10){size--;x.font=weight+' '+size+'px '+font}return size};
+  x.textBaseline='middle';x.textAlign='left';
+  fit('TapScore',Math.round(bh*0.24),'bold');
+  x.fillStyle='#ffffff';x.fillText('TapScore',pad,o.height+(q?bh*0.28:bh*0.36));
+  fit(u,Math.round(bh*0.15),'normal');x.fillStyle='#ffd23f';x.fillText(u,pad,o.height+(q?bh*0.55:bh*0.68));
+  if(q){fit(APP_HINT,Math.round(bh*0.12),'normal');x.fillStyle='#b9cbc1';x.fillText(APP_HINT,pad,o.height+bh*0.84)}
+  return c;
 }
 async function buildImage(){
   const g=games[ui.gid],S=replay(g),M=resultModel(g,S),K=2;
   const m=document.createElement('canvas').getContext('2d');const H=Math.ceil(drawResult(m,M,true));
-  const c=document.createElement('canvas');c.width=540*K;c.height=H*K;const x=c.getContext('2d');x.scale(K,K);drawResult(x,M,false);
+  const c0=document.createElement('canvas');c0.width=540*K;c0.height=H*K;const x=c0.getContext('2d');x.scale(K,K);drawResult(x,M,false);
+  const c=withCredit(c0);   // 画像の下に「アプリ名・URL・QRコード」の帯（文字のURLは付けないので、LINEにリンクのプレビューは出ない）
   const blob=await new Promise(r=>c.toBlob(r,'image/png'));
   if(!blob)throw new Error('toBlob');
   if(ui.img&&ui.img.url)try{URL.revokeObjectURL(ui.img.url);}catch(e){}

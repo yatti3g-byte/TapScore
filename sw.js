@@ -1,7 +1,7 @@
 // TapScore：一度開いたら、電波がなくてもアプリを開き直せるようにする（サーバー不要・GitHub Pagesのまま）
 // ページは「まず通信、だめなら保存してある控え」。通信できるときは常に最新版が出る。
-const CACHE='tapscore-v1';
-const FILES=['./','./index.html','./help.html'];
+const CACHE='tapscore-v2';
+const FILES=['./','./index.html','./help.html','./favicon.svg','./apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()));
