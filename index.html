@@ -506,6 +506,10 @@ details.more.home[open]{padding-bottom:12px}details.more.home .btn{margin-top:6p
 .gsub .linebtn{margin-left:0}
 .foot a{color:var(--accent);font-weight:700;text-decoration:none}
 @media (max-width:380px){.filebtn{font-size:14px;letter-spacing:-.02em}}
+.apphead{display:flex;align-items:center;gap:10px}.apphead .series-tag{display:block;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;line-height:1.3}
+.applogo{flex:none}.applogo .lb{fill:#cfe3d6}.applogo .lh{fill:#2f7d4f}.applogo .lp{fill:#1f2a22}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .applogo .lb{fill:#33423a}:root:not([data-theme="light"]) .applogo .lh{fill:#58b87e}:root:not([data-theme="light"]) .applogo .lp{fill:#e8ede9}}
+:root[data-theme="dark"] .applogo .lb{fill:#33423a}:root[data-theme="dark"] .applogo .lh{fill:#58b87e}:root[data-theme="dark"] .applogo .lp{fill:#e8ede9}
 </style>
 </head>
 <body>
@@ -1490,7 +1494,7 @@ function gameCard(id,cls){
     (ui.canWrite&&cls!=='hero'&&ui.delMode?'<button class="gdel" data-act="del" data-id="'+esc(id)+'" aria-label="'+esc(S.teams[0]+' 対 '+S.teams[1])+' を削除">削除</button>':'')+'</li>';}
 // トップ画面：刺さる機能（記録中の試合・新しい試合・選手カルテ）ほど上に大きく、使う回数の少ないものは下の「そのほか」に畳む
 function viewHome(){
-  let h='<header class="mast"><button class="savest" data-act="save-retry"></button><h1>TapScore</h1><p>野球のスコアを、スマホのタップで記録する</p></header>'+banners();
+  let h='<header class="mast"><button class="savest" data-act="save-retry"></button><div class="apphead"><svg class="applogo" width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><rect class="lb" x="25" y="7" width="14" height="14" rx="3" transform="rotate(45 32 14)"/><rect class="lb" x="7" y="25" width="14" height="14" rx="3" transform="rotate(45 14 32)"/><rect class="lh" x="43" y="25" width="14" height="14" rx="3" transform="rotate(45 50 32)"/><path class="lp" d="M24.5 44 H39.5 V51 L32 58 L24.5 51 Z"/></svg><h1>TapScore<span class="series-tag">DugoutTools</span></h1></div><p>野球のスコアを、スマホのタップで記録する</p></header>'+banners();
   h+=backupNote();
   const ids=Object.keys(games).sort((a,b)=>(games[b].created||0)-(games[a].created||0));
   const live=ui.loading?[]:ids.filter(id=>{const g=games[id];if(!(g.ev||[]).length)return false;return !replayRO(g).ended;});
@@ -1539,8 +1543,8 @@ function lineText(g,S){const T=S.teams,d=g.date?md(g.date):'',n=Math.max(S.line[
   const sc=S.log.filter(e=>e.runs>0&&mine.includes(e.half));if(sc.length){L.push('','得点');sc.forEach(e=>L.push(HS(e)+' '+(e.who?e.who+' ':'')+e.text+'（'+e.runs+'点）'));}
   if(!S.ended){const last=[...S.log].reverse().find(e=>e.k==='pa'&&mine.includes(e.half));if(last)L.push('','直前の打席：'+HS(last)+' '+(last.who?last.who+' ':'')+last.text);}
   return L.join('\n');}
-const SIBS=[['FormNote','https://yatti3g-byte.github.io/form-note/','フォームの確認'],['PitchCount','https://yatti3g-byte.github.io/PitchCount/','球数の管理'],['ShotFind','https://yatti3g-byte.github.io/ShotFind/','わが子の写真探し']];
-const sibLine=()=>'DugoutToolsのアプリ：'+SIBS.map(x=>'<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>（'+x[2]+'）').join('・');
+const SIBS=[['TapScore','https://yatti3g-byte.github.io/TapScore/'],['PitchCount','https://yatti3g-byte.github.io/PitchCount/'],['FormNote','https://yatti3g-byte.github.io/form-note/'],['ShotFind','https://yatti3g-byte.github.io/ShotFind/']];
+const sibLine=()=>'DugoutToolsのアプリ：'+SIBS.map(x=>x[0]==='TapScore'?'<b>TapScore</b>':'<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>').join('・');
 function lineCell(S,t,i){const v=S.line[t][i];if(v!=null)return v;
   const last=Math.max(S.line[0].length,S.line[1].length,1);
   return (S.ended&&t===1&&i===last-1&&S.line[0][i]!=null&&S.R[1]>S.R[0])?'X':'';}
@@ -1775,7 +1779,7 @@ function resultDocHTML(id,g){
   const data=JSON.stringify({app:'TapScore',v:1,id,g}).replace(/</g,'\\u003c');
   let body='<main id="main" class="saved"><header class="mast"><h1>'+esc(title)+'</h1><p>'+esc(M.meta)+'</p></header>'+boardHTML(g,S)+decHTML(S);
   [0,1].forEach(t=>{body+='<h2 class="teamhead">'+(t?'後攻':'先攻')+'　'+esc(S.teams[t])+'</h2><div class="rv">'+teamBody(S,M,t,true)+'</div>';});
-  body+='<p class="foot">TapScore で記録。このファイルは TapScore のトップ画面の「ファイルを開く」で開くと、記録の訂正や続きの入力ができます。</p></main>';
+  body+='<p class="foot">TapScoreで記録。このファイルはTapScoreのトップ画面の「ファイルを開く」で開くと、記録の訂正や続きの入力ができます。</p></main>';
   const js='const fitAll='+fitAll.toString()+';addEventListener("load",fitAll);addEventListener("resize",fitAll);';
   return '<!DOCTYPE html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="generator" content="TapScore">'+
     '<title>'+esc(title+'（'+fmtDate(g.date)+'）')+'</title>'+
@@ -2819,7 +2823,7 @@ function consultText(pid,o){
   const nm=o.hide?'この選手（選手A）':p.name+(digits(p.number)!==''?'（背番号'+digits(p.number)+'）':'');
   const c=CQ.find(x=>x.k===o.q)||CQ[1],q=(o.q==='free'?String(o.free||'').trim():c.q(p.goal||''))||'記録から見て、この選手について気づくことを教えてください。';
   const dates=rows.map(r=>r.L.date).filter(Boolean).sort(),L=[];
-  L.push('あなたは少年野球チームの監督・コーチの、データ分析の参謀です。下の「記録」は、スコア記録アプリ TapScore が、試合中に1球ずつ（または1打席ずつ）記録したデータから計算したものです。');
+  L.push('あなたは少年野球チームの監督・コーチの、データ分析の参謀です。下の「記録」は、スコア記録アプリTapScoreが、試合中に1球ずつ（または1打席ずつ）記録したデータから計算したものです。');
   L.push(...consultRules('日付・相手・回'));
   // 成長を見る質問では、時期の一致を原因と決めつけない・結果だけで伸び悩みとしない・比べられないものははっきり書く
   L.push('- 課題に取り組み始めた時期と数字の変化が重なっても、取り組みが原因だと断定しないでください。単に結果（安打）が出なかったことを「伸び悩み」としないでください。',
@@ -2961,7 +2965,7 @@ function gameConsultText(gid,o){
   const ctx={mine,ended:!!S.ended,tie:S.R[0]===S.R[1],win:mine!=null?(S.R[mine]>S.R[1-mine]?'W':S.R[mine]<S.R[1-mine]?'L':'D'):null,pitch:!!S.hasPitch};
   const c=GQ.find(x=>x.k===o.q)||GQ[0],q=(o.q==='free'?String(o.free||'').trim():c.q(ctx))||'この試合の記録から、気づくことを教えてください。';
   const side=t=>(t?'後攻':'先攻')+(t===mine?'・自チーム':'');
-  const L=['あなたは少年野球チームの監督・コーチの、データ分析の参謀です。下の「記録」は、スコア記録アプリ TapScore が、試合中に1球ずつ（または1打席ずつ）記録したデータです。'];
+  const L=['あなたは少年野球チームの監督・コーチの、データ分析の参謀です。下の「記録」は、スコア記録アプリTapScoreが、試合中に1球ずつ（または1打席ずつ）記録したデータです。'];
   L.push(...consultRules('回・表裏・打順・アウト・走者'),
     '- 事実（記録にあること）と、記録からの解釈を分けて書いてください。個人を責めず、チームとして次に確かめられる形にしてください。',
     '- 記録の数字どうしに食い違いがあれば、分析の前に1行で指摘してください。');
@@ -3007,7 +3011,7 @@ function teamConsultText(teamId,o){
   const team=rTeam(teamId);if(!team)return '';const TL=teamLines(teamId);
   const al=aliasMaker(o.hide);team.players.slice().sort((a,b)=>numKey(a)-numKey(b)).forEach(p=>al(p.name,true));
   const c=TQ.find(x=>x.k===o.q)||TQ[0],q=(o.q==='free'?String(o.free||'').trim():c.q())||'このチームの記録から、気づくことを教えてください。';
-  const L=['あなたは少年野球チームの監督・コーチの、データ分析の参謀です。下の「記録」は、スコア記録アプリ TapScore が、試合中に1球ずつ（または1打席ずつ）記録したデータから計算したものです。'];
+  const L=['あなたは少年野球チームの監督・コーチの、データ分析の参謀です。下の「記録」は、スコア記録アプリTapScoreが、試合中に1球ずつ（または1打席ずつ）記録したデータから計算したものです。'];
   L.push(...consultRules('日付・相手・回'));
   const W=TL.filter(x=>x.win==='W').length,Ls=TL.filter(x=>x.win==='L').length,D=TL.filter(x=>x.win==='D').length;
   L.push('','# 相談したいこと',q,...feelLine(o),...CDEF,'','# 記録','## チーム',

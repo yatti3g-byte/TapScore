@@ -19,6 +19,16 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .open{background:var(--accent);color:#fff;text-decoration:none;font-weight:700;border-radius:12px;padding:10px 16px;font-size:15px}
 h1{font-size:24px;margin:18px 0 12px}
 h2{font-size:18px;margin:26px 0 8px}
+.apphead{display:flex;align-items:center;gap:10px}.apphead .series-tag{display:block;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;line-height:1.3}
+.applogo{flex:none}.applogo .lb{fill:#cfe3d6}.applogo .lh{fill:#2f7d4f}.applogo .lp{fill:#1f2a22}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .applogo .lb{fill:#33423a}:root:not([data-theme="light"]) .applogo .lh{fill:#58b87e}:root:not([data-theme="light"]) .applogo .lp{fill:#e8ede9}}
+:root[data-theme="dark"] .applogo .lb{fill:#33423a}:root[data-theme="dark"] .applogo .lh{fill:#58b87e}:root[data-theme="dark"] .applogo .lp{fill:#e8ede9}
+.series-lead{color:var(--muted);font-size:14px;margin:0 0 10px}
+.family{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.family a{display:block;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);text-decoration:none}
+.family a b{color:var(--accent)}.family a span{display:block;font-size:14px;color:var(--muted)}
+.family a.here{background:var(--accent2,#e8f3ec);border-color:var(--accent)}.family a.here b{color:var(--ink)}
+header.top .apphead{display:flex;align-items:center;gap:8px}
 .data h3{font-size:15px;margin:12px 0 4px}.data h3:first-child{margin-top:0}.data p,.data li{font-size:14px;line-height:1.7;margin:0}.data ul{margin:0;padding-left:1.2em}.data .dnote{margin-top:12px;color:var(--muted);font-size:13px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 12px}
 ol.start{margin:0;padding-left:1.3em}ol.start li{margin:6px 0}
@@ -40,7 +50,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}foote
 </head>
 <body>
 <div class="wrap">
-<header class="top"><span class="brand">TapScore</span><a class="open" href="./index.html">アプリを開く</a></header>
+<header class="top"><span class="brand apphead"><svg class="applogo" width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect class="lb" x="25" y="7" width="14" height="14" rx="3" transform="rotate(45 32 14)"/><rect class="lb" x="7" y="25" width="14" height="14" rx="3" transform="rotate(45 14 32)"/><rect class="lh" x="43" y="25" width="14" height="14" rx="3" transform="rotate(45 50 32)"/><path class="lp" d="M24.5 44 H39.5 V51 L32 58 L24.5 51 Z"/></svg><span>TapScore<span class="series-tag">DugoutTools</span></span></span><a class="open" href="./index.html">アプリを開く</a></header>
 
 <h1>使い方・Q&amp;A</h1>
 
@@ -152,7 +162,9 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}foote
 <details><summary>試合中に画面が消えてしまう</summary><p>記録画面ではなるべく消えないようにしていますが、スマホの設定で自動ロックの時間を長くしておくと安心です。</p></details>
 </div>
 
-<footer><a href="./index.html">TapScore を開く</a><p class="coffee">DugoutToolsのアプリ：<a href="https://yatti3g-byte.github.io/form-note/" target="_blank" rel="noopener">FormNote</a>（フォームの確認）・<a href="https://yatti3g-byte.github.io/PitchCount/" target="_blank" rel="noopener">PitchCount</a>（球数の管理）・<a href="https://yatti3g-byte.github.io/ShotFind/" target="_blank" rel="noopener">ShotFind</a>（わが子の写真探し）</p><p class="coffee">TapScoreは、少年野球のための無料アプリのシリーズ「DugoutTools」のひとつです。気に入ったら、<a href="https://buymeacoffee.com/formnote" target="_blank" rel="noopener">☕ Buy Me a Coffee</a> で DugoutTools を応援していただけるとうれしいです（応援ページはシリーズ共通です）。</p></footer>
+<section class="series"><h2>DugoutToolsのアプリ</h2><p class="series-lead">少年野球の現場で使える、無料・登録なしの道具</p>
+<div class="family"><a class="here" aria-current="page"><b>TapScore</b><span>1球ずつタップして記録するスコアブック</span></a><a href="https://yatti3g-byte.github.io/PitchCount/" target="_blank" rel="noopener"><b>PitchCount</b><span>球数制限に合わせた球数カウンター</span></a><a href="https://yatti3g-byte.github.io/form-note/" target="_blank" rel="noopener"><b>FormNote</b><span>コマ送りと角度の測定で、フォームを確認</span></a><a href="https://yatti3g-byte.github.io/ShotFind/" target="_blank" rel="noopener"><b>ShotFind</b><span>チームの試合写真から、わが子の写真を探す</span></a></div></section>
+<footer><a href="./index.html">TapScoreを開く</a><p class="coffee">TapScoreは、少年野球のための無料アプリのシリーズ「DugoutTools」のひとつです。気に入ったら、<a href="https://buymeacoffee.com/formnote" target="_blank" rel="noopener">☕ Buy Me a Coffee</a> でDugoutToolsを応援していただけるとうれしいです（応援ページはシリーズ共通です）。</p></footer>
 </div>
 <script>
 // キーワードで Q&A を絞り込む（質問と答えの両方から探す）
