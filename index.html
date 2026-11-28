@@ -1297,15 +1297,21 @@ const oppNames=()=>{const set=new Set();CLUBS.forEach(c=>{c.opponents.forEach(o=
 function rosterList(id,teamId){const t=rTeam(teamId);if(!t)return '';
   return '<datalist id="'+id+'">'+t.players.filter(p=>p.name&&!p.left).map(p=>'<option value="'+esc(p.name)+'">'+(digits(p.number)?'背番号'+digits(p.number):'')+(p.nick?'　'+esc(p.nick):'')+'</option>').join('')+'</datalist>';}
 // 名前は退団した選手も探す（在籍の選手を優先）。背番号は在籍の選手だけ（番号は新しい選手に引き継がれるため）
-function rosterFind(teamId,name,no){const t=rTeam(teamId);if(!t)return null;const nm=String(name||'').trim(),n=digits(no);
+// 背番号で探すとき、同じ番号が何人もいれば、この試合のチーム（A・Bなど）の選手を選ぶ。それでも決まらなければ選ばない（名前で選んでもらう）
+function rosterFind(teamId,name,no,sq){const t=rTeam(teamId);if(!t)return null;const nm=String(name||'').trim(),n=digits(no);
   if(nm){const a=t.players.filter(p=>p.name&&(p.name===nm||p.nick===nm));return a.find(p=>!p.left&&p.name===nm)||a.find(p=>!p.left)||a.find(p=>p.name===nm)||a[0]||null;}
   if(!n)return null;
-  const f=findTeam(teamId),rec=f?recentNumber(f.c,t.id,n):null;if(rec)return rec;
-  return t.players.find(p=>p.name&&!p.left&&digits(p.number)===n)||null;}
+  // ①同じチーム（A・Bなど）の直近の試合でその番号だった選手 ②名簿でそのチームにその番号の選手が1人 ③ほかのチームの直近の試合（A・Bを行き来する選手）④名簿にその番号が1人
+  const f=findTeam(teamId),A=t.players.filter(p=>p.name&&!p.left&&digits(p.number)===n);
+  if(sq&&f){const r=recentNumber(f.c,t.id,n,sq);if(r)return r;const B=A.filter(p=>(p.sq||'')===sq);if(B.length===1)return B[0];}
+  const rec=f?recentNumber(f.c,t.id,n):null;if(rec)return rec;
+  return A.length===1?A[0]:null;}
+// 同じ背番号の在籍選手の数（名前で選んでもらう案内に使う）
+function sameNoCount(teamId,no){const t=rTeam(teamId),n=digits(no);return t&&n?t.players.filter(p=>p.name&&!p.left&&digits(p.number)===n).length:0;}
 // 名簿の背番号を最後に直したあとに試合をしていれば、いちばん新しい試合でその番号を付けていた選手（大会で番号が変わったとき用）
-function recentNumber(c,poolId,n){let best=null;
+function recentNumber(c,poolId,n,sq){let best=null;
   for(const id in games){if(id===ui.gid)continue;const g=games[id];if(!g||!Array.isArray(g.rt))continue;
-    [0,1].forEach(x=>{if(poolOf(g.rt[x])!==poolId)return;const k=(g.date||'')+'|'+String(g.created||0).padStart(15,'0');if(!best||k>best.k)best={k,g,x};});}
+    [0,1].forEach(x=>{if(poolOf(g.rt[x])!==poolId)return;if(sq&&squadOf(g,x)!==sq)return;const k=(g.date||'')+'|'+String(g.created||0).padStart(15,'0');if(!best||k>best.k)best={k,g,x};});}
   if(!best||(best.g.upd||0)<=(c.numAt||0))return null;
   const g=best.g,x=best.x;let pid='';((g.lu||[])[x]||[]).forEach(p=>{if(p&&digits(p.no)===n&&p.pid)pid=p.pid;});
   (g.ev||[]).forEach(e=>{if(e&&(e.t==='sub'||e.t==='add')&&e.tm===x&&digits(e.no)===n&&e.pid)pid=e.pid;});
@@ -2012,7 +2018,7 @@ function numberOffer(rows){if(!ui.canWrite)return;const D=[];
 function applyNumbers(D){const L=normClubs({clubs:clubsOut(CLUBS)}),ids=new Set(D.map(x=>x.pid));let cleared=0;
   D.forEach(x=>{for(const c of L)for(const t of c.teams){const p=t.players.find(q=>q.id===x.pid);if(!p)continue;p.number=x.to;c.numAt=Date.now();
     // 同じ番号を持っていたほかの選手（今回の打順にいない）は、番号を空ける
-    t.players.forEach(q=>{if(!ids.has(q.id)&&digits(q.number)===x.to){q.number='';cleared++;}});}});
+    t.players.forEach(q=>{if(!ids.has(q.id)&&digits(q.number)===x.to&&(q.sq||'')===(p.sq||'')){q.number='';cleared++;}});}});
   if(!saveRoster(L)){toast('名簿を保存できませんでした');return;}
   toast('名簿の背番号を'+D.length+'人分合わせました'+(cleared?'（同じ番号だったほかの'+cleared+'人は番号を空けました）':''));render();}
 function prevLineup(g,t,rt){
@@ -2617,8 +2623,8 @@ document.addEventListener('input',ev=>{
       if(pl){if(pl.name!==el.value){r.n=pl.name;el.value=pl.name;}if(digits(pl.number)&&(!r.no||r.autoNo||r.no===digits(pl.number))){r.no=digits(pl.number);r.autoNo=true;if(ne)ne.value=r.no;}}
       else if(r.autoNo){r.no='';r.autoNo=false;if(ne)ne.value='';}}
     else if(el.dataset.lu==='no'){r.no=digits(el.value);r.autoNo=false;
-      if(!String(r.n||'').trim()||r.autoN){const pl=r.no?rosterFind(rt,'',r.no):null,ne=$('#lu-n-'+i);
-        if(pl){r.n=pl.name;r.autoN=true;r.pid=pl.id;}else if(r.autoN){r.n='';r.autoN=false;r.pid='';}
+      if(!String(r.n||'').trim()||r.autoN){const gg=games[ui.gid],pl=r.no?rosterFind(rt,'',r.no,squadOf(gg,ui.luDraft.t)):null,ne=$('#lu-n-'+i);
+        if(pl){r.n=pl.name;r.autoN=true;r.pid=pl.id;}else{if(r.autoN){r.n='';r.autoN=false;r.pid='';}if(r.no&&sameNoCount(rt,r.no)>1)toast('背番号'+r.no+'の選手が何人かいます。名前を選んでください');}
         if(ne)ne.value=r.n;}}
     else{const old=r.p,v=+el.value;r.p=v;const o=v?ui.luDraft.rows.find(x=>x!==r&&x.p===v):null;if(o){o.p=old;toast((o.n||'その選手')+'は'+(POS[old]?POS[old]:'守備なし')+'へ');}render();}}
     luMarks();
